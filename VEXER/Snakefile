@@ -1,0 +1,339 @@
+## This snakefile combines information retrieved from RNAseq data into DNA vcf file
+# FOR BRAF treated patients, saving files as PATIENT_ID-RNA_ID (glass number), to get all file outputs.
+
+configfile: "config.yaml"
+import glob
+import re
+import pathlib
+import pandas as pd
+import os
+import numpy
+from typing import List
+from pathlib import Path
+
+## Pipeline working directory
+pipeline_workdir = os.getcwd()
+
+def get_scratch_directory(subdirs: List[str], force_workdir_scratch: bool=False) -> str:
+    '''
+    Auxiliary function that returns the scratch directory location
+    for a given rule.
+
+    Arguments
+    ---------
+    subdirs: List[str]
+        List of subdirectory names.
+    force_workdir_scratch: bool
+        If true, force the scratch directory inside of the
+        working directory.
+    '''
+    jobid = os.environ.get('PBS_JOBID', None)
+    basedir = None
+    if not jobid or force_workdir_scratch:
+        basedir = Path(pipeline_workdir).joinpath('scratch')
+    else:
+        basedir = Path('/scratch').joinpath(jobid)
+    if subdirs:
+        for element in subdirs:
+            basedir = basedir.joinpath(element)
+    return basedir.as_posix()
+
+# Not sure this is needed, because it only constrain the wildcards used in the snakemake rules. And here only the patient_ID is used.
+#Which should no longer be constrained not to have "-", because it is both the patient_id and the rna_id.
+#Constrain the wildcards to ensure the pattern wished is matched
+wildcard_constraints:
+    #PATIENT_ID = "[^\\-]+",  # Any character except '-'
+    RNA_ID = "[^\\-]+",      # Any character except '-'
+    DNA_T_ID = "[^\\-]+",      # Any character except '-'
+    Preservation = "[^\\-]+",      # Any character except '-'
+    RNA_SEQ = "v[0-9]_.*",        # start with v followed by a digit and then any character
+    DNA_T_SEQ = "v[0-9]_.*",         # start with v followed by a digit and then any character
+    SEQType = "WGS|WES"      # Enforce only WGS or WES matches
+
+
+# find all files matching the pattern
+#RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_RNAlater-RNA_{{RNA_SEQ}}.cram")
+RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
+
+
+######################################################
+#DNA_TUMOR_WGS = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_RNAlater-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
+#DNA_TUMOR_WES = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_RNAlater-WES_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
+DNA_TUMOR_WGS = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
+DNA_TUMOR_WES = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WES_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
+
+####################################################
+# join WES and WGS data to one variable
+DNA_TUMOR = {
+    "PATIENT_ID": DNA_TUMOR_WGS.PATIENT_ID + DNA_TUMOR_WES.PATIENT_ID,
+    "DNA_T_ID": DNA_TUMOR_WGS.DNA_T_ID + DNA_TUMOR_WES.DNA_T_ID,
+    "Preservation": DNA_TUMOR_WGS.Preservation + DNA_TUMOR_WES.Preservation,
+    "DNA_T_SEQ": DNA_TUMOR_WGS.DNA_T_SEQ + DNA_TUMOR_WES.DNA_T_SEQ,
+    "SEQType": list(numpy.repeat("WGS", len(DNA_TUMOR_WGS.PATIENT_ID))) + list(numpy.repeat("WES", len(DNA_TUMOR_WES.PATIENT_ID))),
+    "VAR_prefix": DNA_TUMOR_WGS.VAR_prefix + DNA_TUMOR_WES.VAR_prefix,
+    "VAR_suffix": DNA_TUMOR_WGS.VAR_suffix + DNA_TUMOR_WES.VAR_suffix
+}
+# Create python dictionaries to organize the wildcards
+rna_dict = {f"{pid}-{rid}": (pid, rid, pres, rseq) for pid, rid, pres, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.Preservation, RNA_TUMOR.RNA_SEQ)}
+
+dna_tumor_dict = {
+    f"{pid}-{did}": (pid, did, pres, seqt, dseq, vprefix, vsuffix)
+    for pid, did, pres, seqt, dseq,  vprefix, vsuffix in zip(
+        DNA_TUMOR['PATIENT_ID'],
+        DNA_TUMOR['DNA_T_ID'],
+        DNA_TUMOR['Preservation'],
+        DNA_TUMOR['SEQType'],
+        DNA_TUMOR['DNA_T_SEQ'],
+        DNA_TUMOR['VAR_prefix'],
+        DNA_TUMOR['VAR_suffix']
+    )
+}
+
+# Find patient IDs where we have both the RNA tumor, DNA normal sample and DNA tumor sample
+intersecting_patients = set(rna_dict.keys()).intersection(dna_tumor_dict.keys())
+
+# Selected patients are defined as a list of the BRAF IDs, which have been censored here
+selected_patients = {'xxxxxxxxx','xxxxxxxxx'}
+
+# update common patients to only be those having all file types present and be the selected patients.
+common_patients = {
+    patient for patient in intersecting_patients
+    if patient.split('-')[0] in selected_patients
+}
+
+input_files = lambda wildcards: {
+    "rna_file": f"{config['FASE_FREEZE']}/{config['ALIGN_INDIR']}/{rna_dict[wildcards.PATIENT_ID][0]}-{rna_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{rna_dict[wildcards.PATIENT_ID][2]}-RNA_{rna_dict[wildcards.PATIENT_ID][3]}.cram",
+    #"true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{wildcards.PATIENT_ID}-{dna_tumor_dict[wildcards.PATIENT_ID][0]}-Tumor_Tissue_RNAlater-{dna_tumor_dict[wildcards.PATIENT_ID][1]}_{dna_tumor_dict[wildcards.PATIENT_ID][2]}_snv_somatic_raw.strelka2.vcf.gz",
+    #"annot_true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{wildcards.PATIENT_ID}-{dna_tumor_dict[wildcards.PATIENT_ID][0]}-Tumor_Tissue_RNAlater-{dna_tumor_dict[wildcards.PATIENT_ID][1]}_{dna_tumor_dict[wildcards.PATIENT_ID][2]}_snv_somatic_annot.strelka2.vcf.gz"
+    "true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{dna_tumor_dict[wildcards.PATIENT_ID][0]}-{dna_tumor_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{dna_tumor_dict[wildcards.PATIENT_ID][2]}-{dna_tumor_dict[wildcards.PATIENT_ID][3]}_{dna_tumor_dict[wildcards.PATIENT_ID][4]}_snv_{dna_tumor_dict[wildcards.PATIENT_ID][5]}_raw.{dna_tumor_dict[wildcards.PATIENT_ID][6]}.vcf.gz",
+    "annot_true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{dna_tumor_dict[wildcards.PATIENT_ID][0]}-{dna_tumor_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{dna_tumor_dict[wildcards.PATIENT_ID][2]}-{dna_tumor_dict[wildcards.PATIENT_ID][3]}_{dna_tumor_dict[wildcards.PATIENT_ID][4]}_snv_{dna_tumor_dict[wildcards.PATIENT_ID][5]}_annot.{dna_tumor_dict[wildcards.PATIENT_ID][6]}.vcf.gz"
+}
+
+rule all:
+    input:
+        expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf.gz", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_quality.txt", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_RNAsupport.tab.gz", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated_RNAsupport.vcf.gz", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID_RNA_FILTER.tab.gz", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab", zip,
+        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAlt.txt", zip,
+            PATIENT_ID=common_patients)
+
+# Create file where we have both chromosome ID position and alternative base tab seperated for Single nucleotide variants and filter out header -H
+# column 7 = Filter to get the pass and no-pass information (from raw vcf file not annotated)
+rule extract_vcf:
+    input:
+        TRUE_VCF = lambda wildcards: input_files(wildcards)["true_vcf"]
+    output:
+        ALT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAlt.txt",
+    shell:
+        """
+        module purge
+        module load bcftools/1.16
+        bcftools view -H {input} | awk '$1 ~ /^chr[0-9XYM]+$/ && $2 ~ /^[0-9]+$/ && $4 ~ /^[ATCG]$/ && $5 ~ /^[ATCG]$/ {{print $1 "\t" $2 "\t" $4 "\t" $5 "\t" $7}}' > {output.ALT}
+        """
+
+#Add geneid from annotated VCF file if there is one otherwise remain blank.
+rule add_geneID:
+    input:
+        ANNOT_TRUE_VCF = lambda wildcards: input_files(wildcards)["annot_true_vcf"],
+    output:
+        GeneID = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosGeneID.txt",
+    shell:
+        """
+        module purge
+        module load bcftools/1.16
+        bcftools view -H {input.ANNOT_TRUE_VCF} | awk -F'\t' '{{ split($8, csq, "CSQ="); split(csq[2], info, "|"); {{ print $1 "\t" $2 "\t" $4 "\t" $5 "\t" info[4] }} }}' > {output.GeneID}
+        """
+
+# Join the variant information file which only has SNPs with the geneid 
+rule join_vcf_geneID:
+    input:
+        ALT = rules.extract_vcf.output.ALT,
+        GeneID = rules.add_geneID.output.GeneID
+    output:
+        ALT_ANNOT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAltID.txt",
+    params:
+        JOIN_ID = "/ngc/projects/gm_ext/hblpet/combined_analysis/scripts/parameterize/join_alt_geneID.sh",
+    shell:
+        "module purge; "
+        "bash {params.JOIN_ID} {input.ALT} {input.GeneID} {output.ALT_ANNOT}; "
+
+# Extract nucleotides from each RNA position 
+rule mpileup:
+    input:
+        RNA_ALIGN = lambda wildcards: input_files(wildcards)["rna_file"]
+    output:
+        config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab"
+    log:
+        config['OUTDIR'] + "/{PATIENT_ID}/logs/log_pileup.txt"
+    shell:
+        "module purge; "
+        "module load samtools/1.19.2; "
+        "samtools mpileup {input} -o {output}; "
+        
+# For each variant which has reads supporting the alternative base, we calculate the average phred score and report this.
+rule get_quality:
+    input:
+        ALT = rules.extract_vcf.output.ALT,
+        PILEUP = rules.mpileup.output,
+    output:
+        bases_cleaned = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_cleaned.txt",
+        base_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_quality.txt",
+        base_support_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_quality.txt",
+    params:
+        SUPPORT_BASE = config['SCRIPT_DIR'] + "/get_support_base.sh",
+        QUALITY_SCORE = config['SCRIPT_DIR'] + "/quality_score.py",
+    shell:
+        "module purge; "
+        "module load python36; "
+        "bash {params.SUPPORT_BASE} {input.ALT} {input.PILEUP} {output.bases_cleaned} {output.base_quality}; "
+        "python {params.QUALITY_SCORE} {output.base_quality} > {output.base_support_quality}; "
+
+# Count the number of bases and report in format: CHROM POS TOTAL_READS COUNTS COUNTTYPE (3 T 1 A separated by tabs)
+rule count_nucleotide:
+    input:
+        #rules.mpileup.output
+        rules.get_quality.output.base_support_quality
+    output:
+        config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_count.txt"
+    shell:
+        """
+        module purge
+        awk -F'\t' '{{ 
+            col=toupper($4); 
+            split(col, chars, "");
+            delete count;
+            for (i in chars) count[chars[i]]++;
+            output=$1 "\t" $2 "\t" $3 "\t" $5;
+            for (c in count) output = output "\t" count[c] "\t" c;
+            {{print output}};
+        }}' {input} > {output}
+        """
+
+# Extracting the mpileup rows that express the alternative base and report the fraction of reads supporting the alternative base.
+# Consider which plots should be created per patient, and which should be created for more.
+rule get_alt_coverage:
+    input:
+        ALT_ANNOT = rules.join_vcf_geneID.output.ALT_ANNOT,
+        COUNTS = rules.count_nucleotide.output,
+    output:
+       RES_SUPPORT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID.tab.gz",
+    params:
+        OUTNAME = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support.tab",
+        OUTNAME_ID = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID.tab",
+        GET_SUPPORT = config['SCRIPT_DIR'] + "/get_alt_coverage.sh",
+        #CLINICAl_GENEID = config['SCRIPT_DIR'] + "/fase1_cancer_genes_87.txt",
+        #RPLOT = config['PLOT_DIR'] + "/RNA_support.R",
+    shell:
+        "module purge; "
+        "module load htslib/1.16; "
+        "module load gcc/9.4.0 intel/perflibs/2020_update4 tools R/4.4.0; "
+        "bash {params.GET_SUPPORT} {input.ALT_ANNOT} {input.COUNTS} {params.OUTNAME}; "
+        "paste {params.OUTNAME} <(echo 'PATIENT_ID'; yes '{wildcards.PATIENT_ID}' | head -n $(($(wc -l < {params.OUTNAME})-1))) > {params.OUTNAME_ID}; "
+        "bgzip {params.OUTNAME_ID}; "
+        #"Rscript {params.RPLOT} {output.RES_SUPPORT} {params.CLINICAl_GENEID} {config[OUTDIR]}/{wildcards.PATIENT_ID}; "
+
+# Variants are annotated depending on their supporting evidence
+rule annotate_RNA_support:
+    input:
+        rules.get_alt_coverage.output.RES_SUPPORT,
+    output:
+        RNA_FILTER_INFO = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID_RNA_FILTER.tab.gz",
+        RES_RNASUPPORT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_RNAsupport.tab.gz",
+    params:
+        RNA_ANNOT = config['SCRIPT_DIR'] + "/annotate_RNA_support.sh",
+        INFILE = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID.tab",
+        OUTFILE = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID_RNA_FILTER.tab",
+        RNA_SUPPORT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_RNAsupport.tab",
+        MIN_DEPTH = "5",
+        MIN_ALT_SUPPORT = "4",
+        MIN_PERC = "0",
+        MIN_QUAL = "20",
+    shell:
+        "module purge; "
+        "module load htslib/1.16; "
+        "gunzip {input}; "
+        "bash {params.RNA_ANNOT} {params.MIN_DEPTH} {params.MIN_ALT_SUPPORT} {params.MIN_PERC} {params.MIN_QUAL} {params.INFILE} {params.OUTFILE}; "
+        "bgzip {params.OUTFILE}; "
+        "tabix -s 1 -b 2 -e 2 -f {output.RNA_FILTER_INFO}; "
+        "bgzip {params.INFILE}; "
+        # Create file that only contain the RNA_PASS variants
+        "less {input} | awk '$5>={params.MIN_DEPTH} && $6>={params.MIN_ALT_SUPPORT} && $7>{params.MIN_PERC} && $8>={params.MIN_QUAL}' > {params.RNA_SUPPORT}; "
+        "bgzip {params.RNA_SUPPORT}; "
+        
+# Create header information for vcf file and add RNA information using annotate function.
+rule annotate_vcf:
+    input:
+        SUPPORT = rules.annotate_RNA_support.output.RNA_FILTER_INFO,
+        TRUE_VCF = lambda wildcards: input_files(wildcards)["true_vcf"],
+    output:
+        HEADER = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_info_header.hdr",
+        VCF_ANNOTATION = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf",
+    params:
+        COL1 = "RNA_TOTAL",
+        COL1_DES = "RNAseq total reads",
+        COL2 = "RNA_ALT_COUNT",
+        COL2_DES = "RNAseq sum of reads supporting alternative base",
+        COL3 = "PERCENTAGE",
+        COL3_DES = "RNAseq percentage of total reads supporting alternative base",
+        COL4 = "QUALITY_SUPPORT_AVG",
+        COL4_DES = "Average phred quality score for reads supporting the alternative base",
+        COL5 = "FILTER",
+        VCF_OUTNAME = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf",
+    shell:
+        """
+        module purge
+        module load bcftools/1.16 htslib/1.16
+        echo -e '##INFO=<ID={params.COL1},Number=1,Type=Integer,Description="{params.COL1_DES}">' > {output.HEADER}
+        echo -e '##INFO=<ID={params.COL2},Number=1,Type=Integer,Description="{params.COL2_DES}">' >> {output.HEADER}
+        echo -e '##INFO=<ID={params.COL3},Number=1,Type=Float,Description="{params.COL3_DES}">' >> {output.HEADER}
+        echo -e '##INFO=<ID={params.COL4},Number=1,Type=Integer,Description="{params.COL4_DES}">' >> {output.HEADER}
+
+        echo -e '##FILTER=<ID=LowEVS;RNA_PASS,Description="Variants with Low DNA evidence but RNA evidence passing criteria">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowEVS;RNA_NOPASS,Description="Variants with Low DNA and RNA evidence">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowEVS;RNA_NOALT,Description="Variants with Low DNA evidence and no RNA evidence">' >> {output.HEADER}
+
+        echo -e '##FILTER=<ID=PASS;RNA_PASS,Description="Variants with DNA and RNA evidence">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=PASS;RNA_NOPASS,Description="Variants with DNA evidence but low RNA evidence">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=PASS;RNA_NOALT,Description="Variants with DNA evidence but no RNA evidence">' >> {output.HEADER}
+
+        echo -e '##FILTER=<ID=LowDepth;RNA_PASS,Description="Variants with low DNA depth but RNA evidence">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowDepth;RNA_NOPASS,Description="Variants with low DNA depth evidence and low RNA evidence">' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowDepth;RNA_NOALT,Description="Variants with low DNA depth and no RNA evidence">' >> {output.HEADER}
+
+        echo -e '##FILTER=<ID=LowEVS;LowDepth,Description=>' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowEVS;LowDepth;RNA_PASS,Description=>' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowEVS;LowDepth;RNA_NOPASS,Description=>' >> {output.HEADER}
+        echo -e '##FILTER=<ID=LowEVS;LowDepth;RNA_NOALT,Description=>' >> {output.HEADER}
+        echo -e '##FILTER=<ID=HighDepth;LowEVS,Description=>' >> {output.HEADER}
+
+        bcftools annotate -a {input.SUPPORT} -h {output.HEADER} -c CHROM,POS,REF,ALT,{params.COL1},{params.COL2},{params.COL3},{params.COL4},{params.COL5} {input.TRUE_VCF} -o {params.VCF_OUTNAME}
+        
+        """
+
+rule clean_up_tmp:
+    input:
+        VCF_ANNOTATION = rules.annotate_vcf.output.VCF_ANNOTATION,
+    output:
+        config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf.gz",
+    params:
+        VCF_OUTNAME = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf",
+        RES_SUPPORT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID.tab.gz",
+        COUNTS = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_count.txt",
+        bases_cleaned = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_cleaned.txt",
+        base_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_quality.txt",
+        base_support_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_quality.txt",
+        #mpileup = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab",
+        ALT_ANNOT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAltID.txt",
+        GeneID = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosGeneID.txt",
+        ALT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAlt.txt",
+
+    shell:
+        "module purge; "
+        "module load htslib/1.16; "
+        "bgzip {params.VCF_OUTNAME}; "
+        "rm {params.RES_SUPPORT} {params.COUNTS} {params.bases_cleaned} {params.base_quality} {params.base_support_quality} "
+        "{params.ALT_ANNOT} {params.GeneID} {params.ALT}; "
+        #"{params.mpileup} {params.ALT_ANNOT} {params.GeneID} {params.ALT}; "
