@@ -334,9 +334,9 @@ sub RNAPreProcessParallel{
 	
 	#$outDir/tmp/score.txt.gz the location and filename of the temporary score output file. Make sure that the same file is used for both commands.
 	# --rna set this option for RNA sequence data aligned with STAR. is not recognized so is removed again.
-    system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $bamFile -t 10 --algo LocusCollector --fun score_info $outDir/tmp/score.txt.gz 2>> $outDir/GATK.log.out");
+    system("/path/to/sentieon driver -r $fastaReference -i $bamFile -t 10 --algo LocusCollector --fun score_info $outDir/tmp/score.txt.gz 2>> $outDir/GATK.log.out");
 	# --rmdup removed the duplicates.
-    system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $bamFile -t 10 --algo Dedup --rmdup --score_info $outDir/tmp/score.txt.gz $outDir/tmp/deduped.bam 2>> $outDir/GATK.log.out");
+    system("/path/to/sentieon driver -r $fastaReference -i $bamFile -t 10 --algo Dedup --rmdup --score_info $outDir/tmp/score.txt.gz $outDir/tmp/deduped.bam 2>> $outDir/GATK.log.out");
 
 	$inter_time_epoch = time;
 	$inter_time_str = getTime();
@@ -360,7 +360,7 @@ sub RNAPreProcessParallel{
 	# Split reads
 	#--reassign_mapq IN_QUAL:OUT_QUAL: the algorithm will reassign mapping qualities from IN_QUAL to OUT_QUAL.
 	#This argument is required because STAR assigns a quality of 255 to good alignments instead of the expected default score of 60.
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $outDir/tmp/deduped.bam -t 10 --algo RNASplitReadsAtJunction --reassign_mapq 255:60 $outDir/reAligned_$format.bam 2>> $outDir/GATK.log.out");
+	system("/path/to/sentieon driver -r $fastaReference -i $outDir/tmp/deduped.bam -t 10 --algo RNASplitReadsAtJunction --reassign_mapq 255:60 $outDir/reAligned_$format.bam 2>> $outDir/GATK.log.out");
 
 	$inter_time_epoch = time;
 	$inter_time_str = getTime();
@@ -375,7 +375,7 @@ sub RNAPreProcessParallel{
 	#system($BRCommand);	
 	
 	# BQSR
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $outDir/reAligned_$format.bam -t 10 --algo QualCal -k $dbsnpFile $outDir/Aligned.out.table 2>> $outDir/GATK.log.out");
+	system("/path/to/sentieon driver -r $fastaReference -i $outDir/reAligned_$format.bam -t 10 --algo QualCal -k $dbsnpFile $outDir/Aligned.out.table 2>> $outDir/GATK.log.out");
 
 	$inter_time_epoch = time;
 	$inter_time_str = getTime();
@@ -463,7 +463,7 @@ sub variantsCalling{
 	my $normal_ID = $1 if $normal_ID_string =~ /SM\:(\S+)\s/;
 		
 	# perform recalibration on the fly by providing -q .table
-    system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $tumorInput -i $normalInput -t 10 -q $outDir/Aligned.out.table --algo TNhaplotyper2 --tumor_sample $tumor_ID --normal_sample $normal_ID --germline_vcf $germlineResource --pon $ponResource $outDir/$ID.vcf 2>> $outDir/$ID.log.out");	
+    system("/path/to/sentieon driver -r $fastaReference -i $tumorInput -i $normalInput -t 10 -q $outDir/Aligned.out.table --algo TNhaplotyper2 --tumor_sample $tumor_ID --normal_sample $normal_ID --germline_vcf $germlineResource --pon $ponResource $outDir/$ID.vcf 2>> $outDir/$ID.log.out");	
 	#1>> $outDir/$ID.log.out 2>> $outDir/$ID.log.out &\n
 	# 
 	#Keep the following lines for creating vcf and bed file used as input for realignment.
@@ -591,7 +591,7 @@ sub variantsCalling2{
 	my $normal_ID = $1 if $normal_ID_string =~ /SM\:(\S+)\s/;
 	
 	# Running Sentieon version of Mutect2 with the $fastaReference, like in first variant calling.
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $tumorInput -i $normalInput -t 10 -q $outDir/hisat2_realign.table --algo TNhaplotyper2 --tumor_sample $tumor_ID --normal_sample $normal_ID --germline_vcf $germlineResource --pon $ponResource $outDir/$ID\_Variants.vcf.gz 2>> $outDir/$ID.log.out");
+	system("/path/to/sentieon driver -r $fastaReference -i $tumorInput -i $normalInput -t 10 -q $outDir/hisat2_realign.table --algo TNhaplotyper2 --tumor_sample $tumor_ID --normal_sample $normal_ID --germline_vcf $germlineResource --pon $ponResource $outDir/$ID\_Variants.vcf.gz 2>> $outDir/$ID.log.out");
 	
 	
 	my $end_time_epoch = time;
@@ -673,10 +673,10 @@ sub extractReadFromBam{
     system("java -jar $picard AddOrReplaceReadGroups -I $tmp_dir/hisat2_realign.bam -O $tmp_dir/add_hisat2_realign.bam -RGID $tumorID -RGLB $tumorLB -RGPL $tumorPL -RGPU $tumorPU -RGSM $tumorSM -VALIDATION_STRINGENCY STRICT 2>> $hisat2_log");
 	system("$samtools index $tmp_dir/add_hisat2_realign.bam");
 	# Swtiching to fasta reference
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $tmp_dir/add_hisat2_realign.bam -t 10 --algo LocusCollector --fun score_info $tmp_dir/score_hisat2.txt.gz 2>> $hisat2_log");
-    system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $tmp_dir/add_hisat2_realign.bam -t 10 --algo Dedup --rmdup --score_info $tmp_dir/score_hisat2.txt.gz $tmp_dir/md_hisat2_realign.bam 2>> $hisat2_log");	
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $tmp_dir/md_hisat2_realign.bam -t 10 --algo RNASplitReadsAtJunction --reassign_mapq 255:60 $dir/reAligned_hisat2_Tumor.bam 2>> $hisat2_log");
-	system("/ngc/tools/ngctools/sentieon-genomics/202112/bin/sentieon driver -r $fastaReference -i $dir/reAligned_hisat2_Tumor.bam -t 10 --algo QualCal -k $dbsnpFile $dir/hisat2_realign.table 2>> $hisat2_log");
+	system("/path/to/sentieon driver -r $fastaReference -i $tmp_dir/add_hisat2_realign.bam -t 10 --algo LocusCollector --fun score_info $tmp_dir/score_hisat2.txt.gz 2>> $hisat2_log");
+    system("/path/to/sentieon driver -r $fastaReference -i $tmp_dir/add_hisat2_realign.bam -t 10 --algo Dedup --rmdup --score_info $tmp_dir/score_hisat2.txt.gz $tmp_dir/md_hisat2_realign.bam 2>> $hisat2_log");	
+	system("/path/to/sentieon driver -r $fastaReference -i $tmp_dir/md_hisat2_realign.bam -t 10 --algo RNASplitReadsAtJunction --reassign_mapq 255:60 $dir/reAligned_hisat2_Tumor.bam 2>> $hisat2_log");
+	system("/path/to/sentieon driver -r $fastaReference -i $dir/reAligned_hisat2_Tumor.bam -t 10 --algo QualCal -k $dbsnpFile $dir/hisat2_realign.table 2>> $hisat2_log");
 	
 
 	#system("rm -r $tmp_dir") if -d $tmp_dir;
