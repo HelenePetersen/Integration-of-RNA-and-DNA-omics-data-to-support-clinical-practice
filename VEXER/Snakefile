@@ -38,23 +38,9 @@ def get_scratch_directory(subdirs: List[str], force_workdir_scratch: bool=False)
             basedir = basedir.joinpath(element)
     return basedir.as_posix()
 
-# Not sure this is needed, because it only constrain the wildcards used in the snakemake rules. And here only the patient_ID is used.
-#Which should no longer be constrained not to have "-", because it is both the patient_id and the rna_id.
-#Constrain the wildcards to ensure the pattern wished is matched
-wildcard_constraints:
-    #PATIENT_ID = "[^\\-]+",  # Any character except '-'
-    RNA_ID = "[^\\-]+",      # Any character except '-'
-    DNA_T_ID = "[^\\-]+",      # Any character except '-'
-    Preservation = "[^\\-]+",      # Any character except '-'
-    RNA_SEQ = "v[0-9]_.*",        # start with v followed by a digit and then any character
-    DNA_T_SEQ = "v[0-9]_.*",         # start with v followed by a digit and then any character
-    SEQType = "WGS|WES"      # Enforce only WGS or WES matches
-
-
 # find all files matching the pattern
 #RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_RNAlater-RNA_{{RNA_SEQ}}.cram")
 RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
-
 
 ######################################################
 #DNA_TUMOR_WGS = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_RNAlater-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
