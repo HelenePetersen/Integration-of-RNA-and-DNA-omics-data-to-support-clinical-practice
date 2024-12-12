@@ -1,0 +1,4 @@
+__default__:
+  group:  gm_ext
+  output: logs/clusterlogs/
+  error:  logs/clusterlogs/
