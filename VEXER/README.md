@@ -4,7 +4,9 @@ This README file describes the funcionalities of the RNA_DNA_merge pipeline.
 Edit config file paths to change input and output folders.
 
 Run snakemake pipeline using:
+
 snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 1 --cores 1 -k -p
+
 Change value for -j in command to the number of parallel jobs you wish to run
 
 ## Description of snakmake rules:
