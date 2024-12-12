@@ -1,0 +1,301 @@
+## This script is the combined snakemake rule of both Mutect2 variant calling and IMAPR tool
+
+configfile: "config.yaml"
+import glob
+import re
+import pathlib
+import pandas as pd
+import os
+from typing import List
+from pathlib import Path
+
+## Pipeline working directory
+pipeline_workdir = os.getcwd()
+
+def get_scratch_directory(subdirs: List[str], force_workdir_scratch: bool=False) -> str:
+    '''
+    Auxiliary function that returns the scratch directory location
+    for a given rule.
+
+    Arguments
+    ---------
+    subdirs: List[str]
+        List of subdirectory names.
+    force_workdir_scratch: bool
+        If true, force the scratch directory inside of the
+        working directory.
+    '''
+    jobid = os.environ.get('PBS_JOBID', None)
+    basedir = None
+    if not jobid or force_workdir_scratch:
+        basedir = Path(pipeline_workdir).joinpath('scratch')
+    else:
+        basedir = Path('/scratch').joinpath(jobid)
+    if subdirs:
+        for element in subdirs:
+            basedir = basedir.joinpath(element)
+    return basedir.as_posix()
+
+# find all files matching the pattern
+RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
+DNA_NORMAL = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{DNA_ID}}-Normal_Blood_{{Preservation}}-WGS_{{DNA_SEQ}}.cram")
+DNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
+
+# Create python dictionaries to organize the wildcards
+#rna_dict = {pid: (rid, rseq) for pid, rid, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.RNA_SEQ)}
+
+# Create python dictionaries to organize the wildcards
+rna_dict = {f"{pid}-{rid}": (pid, rid, pres, rseq) for pid, rid, pres, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.Preservation, RNA_TUMOR.RNA_SEQ)}
+dna_norm_dict = {f"{pid}": (pid, did, pres, dseq) for pid, did, pres, dseq in zip(DNA_NORMAL.PATIENT_ID, DNA_NORMAL.DNA_ID, DNA_NORMAL.Preservation, DNA_NORMAL.DNA_SEQ)}
+dna_tumor_dict = {f"{pid}-{dTid}": (pid, dTid, pres, dseq, vprefix, vsuffix) for pid, dTid, pres, dseq, vprefix, vsuffix in zip(DNA_TUMOR.PATIENT_ID, DNA_TUMOR.DNA_T_ID, DNA_TUMOR.Preservation, DNA_TUMOR.DNA_T_SEQ, DNA_TUMOR.VAR_prefix, DNA_TUMOR.VAR_suffix )}
+
+# Find patient IDs where we have both the RNA tumor and DNA tumor sample
+intersecting_patients = set(rna_dict.keys()).intersection(dna_tumor_dict.keys())#, dna_norm_dict.keys())
+
+# Patient IDs of BRAF patients, IDs have been censored.
+selected_patients = {'xxxxxxxx','xxxxxxxx'}
+
+# update common patients to only be those having all file types present and be the selected patients.
+common_patients = {
+    patient for patient in intersecting_patients
+    if patient.split('-')[0] in dna_norm_dict.keys() and patient.split('-')[0] in selected_patients
+
+}
+
+# Using the split in the dna_normal input files: wildcards.PATIENT_ID.split('-')[0], to get just the patient ID while RNA and DNA tumor should be from the same glass number.
+
+input_files = lambda wildcards: {
+    "rna_cram": f"{config['FASE_FREEZE']}/{config['ALIGN_INDIR']}/{rna_dict[wildcards.PATIENT_ID][0]}-{rna_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{rna_dict[wildcards.PATIENT_ID][2]}-RNA_{rna_dict[wildcards.PATIENT_ID][3]}.cram",
+    "dna_normal_cram": f"{config['FASE_FREEZE']}/{config['ALIGN_INDIR']}/{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][0]}-{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][1]}-Normal_Blood_{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][2]}-WGS_{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][3]}.cram",
+    "rna_name": f"{rna_dict[wildcards.PATIENT_ID][0]}-{rna_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{rna_dict[wildcards.PATIENT_ID][2]}-RNA_{rna_dict[wildcards.PATIENT_ID][3]}",
+    "dna_name": f"{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][0]}-{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][1]}-Normal_Blood_{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][2]}-WGS_{dna_norm_dict[wildcards.PATIENT_ID.split('-')[0]][3]}",
+    "true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{dna_tumor_dict[wildcards.PATIENT_ID][0]}-{dna_tumor_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{dna_tumor_dict[wildcards.PATIENT_ID][2]}-WGS_{dna_tumor_dict[wildcards.PATIENT_ID][3]}_snv_{dna_tumor_dict[wildcards.PATIENT_ID][4]}_raw.{dna_tumor_dict[wildcards.PATIENT_ID][5]}.vcf.gz"
+}
+
+rule all:
+    input:
+        expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_input.txt", zip,
+            PATIENT_ID=common_patients
+            )
+
+rule run_pipeline:
+    input:
+        RNA_ALIGN = lambda wildcards: input_files(wildcards)["rna_cram"],
+        DNA_ALIGN = lambda wildcards: input_files(wildcards)["dna_normal_cram"],
+        TRUE_VCF = lambda wildcards: input_files(wildcards)["true_vcf"],
+    output:
+        PRINT_FILES = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_input.txt"
+    params:
+        tmp = get_scratch_directory(['pipeline_dir'], False),
+        PRINT_INFILES = "{PATIENT_ID}_input.txt",
+        RNA_NAME = lambda wildcards: input_files(wildcards)["rna_name"],
+        DNA_NAME = lambda wildcards: input_files(wildcards)["dna_name"],
+        RNA_BAM = "{PATIENT_ID}_RNA.bam",
+        DNA_BAM = "{PATIENT_ID}_DNA_norm.bam",
+        IMAPR_PARAM = "{PATIENT_ID}_input_IMAPR.txt",
+        IMAPR_script = config['SCRIPTDIR'] + "/IMPAR_full.sh",
+        IMAPR_FINAL_VARIANT = lambda wildcards: input_files(wildcards)["rna_name"] + "_final_Variants.vcf.gz",
+        IMAPR_FIRST_VARIANT = lambda wildcards: input_files(wildcards)["rna_name"] + "_first_Variants.vcf",
+        IMAPR_HEADER = lambda wildcards: input_files(wildcards)["rna_name"] + "_first.vcf",
+        IMAPR_FIRST_VARIANT_HEADER = "{PATIENT_ID}-Tumor_Tissue_RNAlater-RNA_first_Variants_header.vcf.gz",
+        Mutect_VARIANT = "{PATIENT_ID}_mutect2_DNA_RNA.vcf.gz",
+        Mutect_VARIANT_FILT = "{PATIENT_ID}_mutect2_DNA_RNA_filt.vcf.gz",
+        RNA_COVERAGE = "{PATIENT_ID}_RNAcov.bed",
+        TRUE_VCF_SUB = "{PATIENT_ID}_RNAcov_sub.vcf",
+        TRUE_VCF_SUB_NORM = "{PATIENT_ID}_RNAcov_sub_norm.vcf",
+        TEST_VCF_NORM = "DNA_RNA_filt_norm.vcf",
+        STATS_VARIANTS = config['SCRIPTDIR'] + "/get_stats_variants.sh",
+        STATS_OUTNAME = "{PATIENT_ID}_comparison",
+        INPUT_FORMAT = config['input_format'],
+        THREAD = config['thread'],
+        RAM = config['ram'],
+        GATK = config['gatk'],
+        PICARD = config['picard'],
+        SAMTOOLS = config['samtools'],
+        BCFTOOLS = config['bcftools'],
+        HISAT = config['hisat2'],
+        FASTA = config['fasta_ref'],
+        GTF = config['gtf_ref'],
+        GG_LIST = config['genelist_ref'],
+        DBSNP = config['dbsnp_ref'],
+        GERMLINE = config['germline_ref'],
+        PON = config['PON_ref'],
+        HISAT_REF = config['hisat_ref'],
+        IGG = config['igg_ref'],
+        HLA = config['hla_ref'],
+        PSEUDO = config['pseudo_ref'],
+        TCGA_PON = config['tcga_PON_ref'],
+        RADAR = config['radar_ref'],
+        DARNED = config['darned_ref'],
+        REDI = config['REDI_ref'],
+        
+    benchmark:
+        config['OUTDIR'] + "/{PATIENT_ID}/benchmarks/{PATIENT_ID}_input.txt",
+    log:
+        config['OUTDIR'] + "/{PATIENT_ID}/logs/{PATIENT_ID}_input.txt",
+    shell:
+        "(mkdir -p {params.tmp}; "
+
+        # Make sub directories
+        "mkdir -p {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/; "
+        "mkdir -p {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/; "
+        
+        #Remove all loaded modules
+        "module purge; "
+        #Load necesarry modules
+        "module load anaconda2/4.4.0 tools perl/5.20.1 java/1.8.0 gatk/4.2.0.0; "
+        "module load samtools/1.18 htslib/1.16 bcftools/1.20 bedtools/2.30.0; "
+        "module load ngctools sentieon-genomics/202112; "
+        ###module load snakemake/7.25.0 hap.py/0.3.10 imapr/1.0
+
+        # print to check correct input names
+        "echo -e '{input.RNA_ALIGN}' > {params.tmp}/{params.PRINT_INFILES}; "
+        "echo -e '{input.DNA_ALIGN}' >> {params.tmp}/{params.PRINT_INFILES}; "
+        "echo -e '{input.TRUE_VCF}' >> {params.tmp}/{params.PRINT_INFILES}; "
+        "echo -e '{params.RNA_NAME}' >> {params.tmp}/{params.PRINT_INFILES}; "
+        "echo -e '{params.DNA_NAME}' >> {params.tmp}/{params.PRINT_INFILES}; "
+        "cp {params.tmp}/{params.PRINT_INFILES} {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.PRINT_INFILES}; "
+
+        #Convert cram files to bam files
+        "samtools view -b -T {params.FASTA} {input.RNA_ALIGN} -o {params.tmp}/{params.RNA_BAM}; "
+        "samtools index {params.tmp}/{params.RNA_BAM} -o {params.tmp}/{params.RNA_BAM}.bai; "
+        "samtools view -b -T {params.FASTA} {input.DNA_ALIGN} -o {params.tmp}/{params.DNA_BAM}; "
+        "samtools index {params.tmp}/{params.DNA_BAM} -o {params.tmp}/{params.DNA_BAM}.bai; "
+
+        # Create input file to IMAPR
+        "echo -e 'sample_name\t {params.RNA_NAME}' > {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'input_format\t {params.INPUT_FORMAT}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'tumor_input\t {params.tmp}/{params.RNA_BAM}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'normal_input\t {params.tmp}/{params.DNA_BAM}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'out_prefix\t {params.tmp}/IMAPR' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        
+        "echo -e '#system' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'thread\t {params.THREAD}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'ram\t {params.RAM}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+
+        "echo -e '#tools_reference' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'gatk\t {params.GATK}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'picard\t {params.PICARD}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'samtools\t {params.SAMTOOLS}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'bcftools\t {params.BCFTOOLS}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'hisat2\t {params.HISAT}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+
+        "echo -e '#reference' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'fasta_ref\t {params.FASTA}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'gtf_ref\t {params.GTF}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'genelist_ref\t {params.GG_LIST}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'dbsnp_ref\t {params.DBSNP}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'germline_ref\t {params.GERMLINE}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'PON_ref\t {params.PON}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+
+        "echo -e 'hisat_ref\t {params.HISAT_REF}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'igg_ref\t {params.IGG}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'hla_ref\t {params.HLA}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'pseudo_ref\t {params.PSEUDO}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'tcga_PON_ref\t {params.TCGA_PON}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'radar_ref\t {params.RADAR}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'darned_ref\t {params.DARNED}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+        "echo -e 'REDI_ref\t {params.REDI}' >> {params.tmp}/{params.IMAPR_PARAM}; "
+
+        # Copy input to IMAPR pipeline to central storage
+        "cp {params.tmp}/{params.IMAPR_PARAM} {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_PARAM}; "
+
+        #Run IMAPR pipeline
+        "bash {params.IMAPR_script} {params.tmp}/{params.IMAPR_PARAM}; "
+
+        # Copy output files from IMAPR and error logs to central storage
+        "cp {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT} {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT}; "
+        "cp {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi; "
+        "cp {params.tmp}/IMAPR/HISAT2.log.out {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/HISAT2.log.out; "
+        "cp {params.tmp}/IMAPR/GATK.log.out {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/GATK.log.out; "
+
+        # Join header for IMAPR first variants output
+        "cat <(grep '^#' {params.tmp}/IMAPR/{params.IMAPR_HEADER}) {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT} | bgzip > {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}; "
+        "bcftools index -t {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER} -o {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}.tbi; "
+
+        # Copy IMAPR variant with added header to central storage
+        "cp {params.tmp}/IMAPR/{params.IMAPR_HEADER} {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_HEADER}; "
+        "cp {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER} {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}; "
+        "cp {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}.tbi; "
+
+        #Temporarily copy the other way around
+        #"mkdir -p {params.tmp}/IMAPR/; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT} {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT}; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi; "
+        #Temporarily copy end
+
+        #Run sentieon driver for somatic variant calling with tumor RNA and normal DNA
+        "sentieon driver -r {params.FASTA} -i {params.tmp}/{params.RNA_BAM} -i {params.tmp}/{params.DNA_BAM} -t 10 --algo TNhaplotyper2 --tumor_sample {params.RNA_NAME} "
+        "--normal_sample {params.DNA_NAME} --germline_vcf {params.GERMLINE} --pon {params.PON} {params.tmp}/{params.Mutect_VARIANT}; "
+        
+        #Copy Mutect2 variant output to central storage
+        "cp {params.tmp}/{params.Mutect_VARIANT} {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}; "
+        "cp {params.tmp}/{params.Mutect_VARIANT}.stats {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.stats; "
+        "cp {params.tmp}/{params.Mutect_VARIANT}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.tbi; "
+
+        #Temporarily Copy the other way around
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT} {params.tmp}/{params.Mutect_VARIANT}; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.stats {params.tmp}/{params.Mutect_VARIANT}.stats; "
+        # Temporarily copy end 
+
+        #Run sentieon driver for filtering somatic variant calling
+        "sentieon driver -r {params.FASTA} -t 10 --algo TNfilter --tumor_sample {params.RNA_NAME} --normal_sample {params.DNA_NAME} -v {params.tmp}/{params.Mutect_VARIANT} {params.tmp}/{params.Mutect_VARIANT_FILT}; "
+        
+        # Copy filtered variant and index to central storage
+        "cp {params.tmp}/{params.Mutect_VARIANT_FILT} {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}; "
+        "cp {params.tmp}/{params.Mutect_VARIANT_FILT}.stats {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.stats; "
+        "cp {params.tmp}/{params.Mutect_VARIANT_FILT}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.tbi; "
+
+        #Temporarily copy the other way around
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT} {params.tmp}/{params.Mutect_VARIANT_FILT}; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.tbi {params.tmp}/{params.Mutect_VARIANT_FILT}.tbi; "
+        #Temporarily copy end
+
+        # Find the coverage of the RNA
+        "bedtools genomecov -ibam {input.RNA_ALIGN} -bg > {params.tmp}/{params.RNA_COVERAGE}; "
+
+        #Subset DNA vcf file according to RNA coverage
+        "bcftools view -R {params.tmp}/{params.RNA_COVERAGE} {input.TRUE_VCF} -o {params.tmp}/{params.TRUE_VCF_SUB}; "
+        "bgzip {params.tmp}/{params.TRUE_VCF_SUB}; "
+        "bcftools index -t {params.tmp}/{params.TRUE_VCF_SUB}.gz -o {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi; "
+        
+        #Temporarily copy the other way around
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz {params.tmp}/{params.TRUE_VCF_SUB}.gz; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz.tbi {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi; "
+        #Temporarily copy end
+
+        #Normalize subset DNA vcf file
+        "bcftools norm -f {params.FASTA} {params.tmp}/{params.TRUE_VCF_SUB}.gz -o {params.tmp}/{params.TRUE_VCF_SUB_NORM}; "
+        "bgzip {params.tmp}/{params.TRUE_VCF_SUB_NORM}; "
+        "bcftools index -t {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz -f -o {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz.tbi; "
+        
+        #Copy subsetted DNA vcf and index to central storage
+        "cp {params.tmp}/{params.TRUE_VCF_SUB}.gz {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz; "
+        "cp {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz.tbi; "
+        "cp {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz* {config[OUTDIR]}/{wildcards.PATIENT_ID}; "
+
+        #Temporarily copy the other way around
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB_NORM}.gz {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz; "
+        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB_NORM}.gz.tbi {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz.tbi; "
+        #Temporarily copy end
+        
+        # Run vcf comparison for Mutect; som.py -P including variants not passing filter and -N normalize both truth and query, bcftools norm and isec to normalize query and truth and find intersections
+        "bash {params.STATS_VARIANTS} {params.tmp}/{params.TRUE_VCF_SUB}.gz {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz {params.tmp}/{params.Mutect_VARIANT_FILT} {params.FASTA} {params.tmp}/{params.STATS_OUTNAME} {params.tmp} mutect2_{params.TEST_VCF_NORM}; "
+        
+        #Copy vcf comparison results for Mutect to central storage
+        "cp {params.tmp}/{params.STATS_OUTNAME}* {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect; "
+        "cp {params.tmp}/000* {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect; "
+        "cp {params.tmp}/README.txt {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect; "
+
+        #Run vcf comparison for IMAPR; som.py -P including variants not passing filter and -N normalize both truth and query, bcftools norm and isec to normalize query and truth and find intersections
+        "bash {params.STATS_VARIANTS} {params.tmp}/{params.TRUE_VCF_SUB}.gz {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT} {params.FASTA} {params.tmp}/{params.STATS_OUTNAME} {params.tmp} IMAPR_{params.TEST_VCF_NORM}; "
+        
+        #Copy vcf comparison results for IMAPR to central storage
+        "cp {params.tmp}/{params.STATS_OUTNAME}* {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR; "
+        "cp {params.tmp}/000* {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR; "
+        "cp {params.tmp}/README.txt {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR; "
+
+        # End of job
+        "rm -rf {params.tmp}; "
+        ") 2> {log}"
+

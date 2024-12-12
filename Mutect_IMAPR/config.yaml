@@ -1,0 +1,33 @@
+OUTDIR: "/path/to/output/directory/Mutect_IMAPR/BRAF"
+SCRIPTDIR: "/path/to/Mutect_IMAPR/scripts"
+
+FASE_FREEZE: "/path/to/fase1_data_archieve"
+ALIGN_INDIR: "alignments"
+TRUE_VARIANT_INDIR: "variants/snv"
+
+
+input_format: "RNA/DNA"
+thread: "10"
+ram: "60"
+gatk: "/services/tools/gatk/4.1.8.1/gatk"
+picard: "/services/tools/picard-tools/2.25.2/picard.jar"
+samtools: "/services/tools/samtools/1.19.2/bin/samtools"
+bcftools: "/services/tools/bcftools/1.16/bcftools"
+hisat2: "/services/tools/hisat2/2.2.0/hisat2"
+
+fasta_ref: "/path/to/fasta_reference/file.fasta"
+gtf_ref: "/path/to/gtf_reference/file.gtf"
+PON_ref: "/path/to/pon_reference/file.vcf.gz"
+
+genelist_ref: "/path/to/IMAPR/reference/gg.list"
+dbsnp_ref: "/path/to/IMAPR/reference/common_all_20180418.vcf.gz"
+germline_ref: "/path/to/IMAPR/reference/af-only-gnomad.hg38.vcf.gz"
+hisat_ref: "/path/to/IMAPR/reference/hisat2_GRCh38_no_alt"
+igg_ref: "/path/to/IMAPR/reference/IGG.gtf"
+hla_ref: "/path/to/IMAPR/reference/HLA.gtf"
+pseudo_ref: "/path/to/IMAPR/reference/pseudoGene.gtf"
+tcga_PON_ref: "/path/to/IMAPR/reference/4.2.6.1_wgs_pon_filtered_000021of004224_clean.vcf.gz"
+radar_ref: "/path/to/IMAPR/reference/Radar_38.bed"
+darned_ref: "/path/to/IMAPR/reference/Darned_38.bed"
+REDI_ref: "/path/to/IMAPR/reference/RNA-EDI_38.bed"
+
