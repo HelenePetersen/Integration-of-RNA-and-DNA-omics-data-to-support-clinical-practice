@@ -218,13 +218,7 @@ rule run_pipeline:
         "cp {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER} {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}; "
         "cp {params.tmp}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FIRST_VARIANT_HEADER}.tbi; "
 
-        #Temporarily copy the other way around
-        #"mkdir -p {params.tmp}/IMAPR/; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT} {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT}; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi {params.tmp}/IMAPR/{params.IMAPR_FINAL_VARIANT}.tbi; "
-        #Temporarily copy end
-
-        #Run sentieon driver for somatic variant calling with tumor RNA and normal DNA
+                #Run sentieon driver for somatic variant calling with tumor RNA and normal DNA
         "sentieon driver -r {params.FASTA} -i {params.tmp}/{params.RNA_BAM} -i {params.tmp}/{params.DNA_BAM} -t 10 --algo TNhaplotyper2 --tumor_sample {params.RNA_NAME} "
         "--normal_sample {params.DNA_NAME} --germline_vcf {params.GERMLINE} --pon {params.PON} {params.tmp}/{params.Mutect_VARIANT}; "
         
@@ -232,11 +226,6 @@ rule run_pipeline:
         "cp {params.tmp}/{params.Mutect_VARIANT} {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}; "
         "cp {params.tmp}/{params.Mutect_VARIANT}.stats {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.stats; "
         "cp {params.tmp}/{params.Mutect_VARIANT}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.tbi; "
-
-        #Temporarily Copy the other way around
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT} {params.tmp}/{params.Mutect_VARIANT}; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT}.stats {params.tmp}/{params.Mutect_VARIANT}.stats; "
-        # Temporarily copy end 
 
         #Run sentieon driver for filtering somatic variant calling
         "sentieon driver -r {params.FASTA} -t 10 --algo TNfilter --tumor_sample {params.RNA_NAME} --normal_sample {params.DNA_NAME} -v {params.tmp}/{params.Mutect_VARIANT} {params.tmp}/{params.Mutect_VARIANT_FILT}; "
@@ -246,11 +235,6 @@ rule run_pipeline:
         "cp {params.tmp}/{params.Mutect_VARIANT_FILT}.stats {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.stats; "
         "cp {params.tmp}/{params.Mutect_VARIANT_FILT}.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.tbi; "
 
-        #Temporarily copy the other way around
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT} {params.tmp}/{params.Mutect_VARIANT_FILT}; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/Mutect/{params.Mutect_VARIANT_FILT}.tbi {params.tmp}/{params.Mutect_VARIANT_FILT}.tbi; "
-        #Temporarily copy end
-
         # Find the coverage of the RNA
         "bedtools genomecov -ibam {input.RNA_ALIGN} -bg > {params.tmp}/{params.RNA_COVERAGE}; "
 
@@ -259,11 +243,6 @@ rule run_pipeline:
         "bgzip {params.tmp}/{params.TRUE_VCF_SUB}; "
         "bcftools index -t {params.tmp}/{params.TRUE_VCF_SUB}.gz -o {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi; "
         
-        #Temporarily copy the other way around
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz {params.tmp}/{params.TRUE_VCF_SUB}.gz; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz.tbi {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi; "
-        #Temporarily copy end
-
         #Normalize subset DNA vcf file
         "bcftools norm -f {params.FASTA} {params.tmp}/{params.TRUE_VCF_SUB}.gz -o {params.tmp}/{params.TRUE_VCF_SUB_NORM}; "
         "bgzip {params.tmp}/{params.TRUE_VCF_SUB_NORM}; "
@@ -273,11 +252,6 @@ rule run_pipeline:
         "cp {params.tmp}/{params.TRUE_VCF_SUB}.gz {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz; "
         "cp {params.tmp}/{params.TRUE_VCF_SUB}.gz.tbi {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB}.gz.tbi; "
         "cp {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz* {config[OUTDIR]}/{wildcards.PATIENT_ID}; "
-
-        #Temporarily copy the other way around
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB_NORM}.gz {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz; "
-        #"cp {config[OUTDIR]}/{wildcards.PATIENT_ID}/{params.TRUE_VCF_SUB_NORM}.gz.tbi {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz.tbi; "
-        #Temporarily copy end
         
         # Run vcf comparison for Mutect; som.py -P including variants not passing filter and -N normalize both truth and query, bcftools norm and isec to normalize query and truth and find intersections
         "bash {params.STATS_VARIANTS} {params.tmp}/{params.TRUE_VCF_SUB}.gz {params.tmp}/{params.TRUE_VCF_SUB_NORM}.gz {params.tmp}/{params.Mutect_VARIANT_FILT} {params.FASTA} {params.tmp}/{params.STATS_OUTNAME} {params.tmp} mutect2_{params.TEST_VCF_NORM}; "
