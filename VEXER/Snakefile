@@ -75,7 +75,7 @@ dna_tumor_dict = {
     )
 }
 
-# Find patient IDs where we have both the RNA tumor, DNA normal sample and DNA tumor sample
+# Find patient IDs where we have both the RNA tumor and DNA tumor sample
 intersecting_patients = set(rna_dict.keys()).intersection(dna_tumor_dict.keys())
 
 # Selected patients are defined as a list of the BRAF IDs, which have been censored here
