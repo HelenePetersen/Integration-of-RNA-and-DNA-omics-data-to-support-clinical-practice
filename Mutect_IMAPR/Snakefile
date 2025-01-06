@@ -42,15 +42,12 @@ DNA_NORMAL = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_IND
 DNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
 
 # Create python dictionaries to organize the wildcards
-#rna_dict = {pid: (rid, rseq) for pid, rid, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.RNA_SEQ)}
-
-# Create python dictionaries to organize the wildcards
 rna_dict = {f"{pid}-{rid}": (pid, rid, pres, rseq) for pid, rid, pres, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.Preservation, RNA_TUMOR.RNA_SEQ)}
 dna_norm_dict = {f"{pid}": (pid, did, pres, dseq) for pid, did, pres, dseq in zip(DNA_NORMAL.PATIENT_ID, DNA_NORMAL.DNA_ID, DNA_NORMAL.Preservation, DNA_NORMAL.DNA_SEQ)}
 dna_tumor_dict = {f"{pid}-{dTid}": (pid, dTid, pres, dseq, vprefix, vsuffix) for pid, dTid, pres, dseq, vprefix, vsuffix in zip(DNA_TUMOR.PATIENT_ID, DNA_TUMOR.DNA_T_ID, DNA_TUMOR.Preservation, DNA_TUMOR.DNA_T_SEQ, DNA_TUMOR.VAR_prefix, DNA_TUMOR.VAR_suffix )}
 
 # Find patient IDs where we have both the RNA tumor and DNA tumor sample
-intersecting_patients = set(rna_dict.keys()).intersection(dna_tumor_dict.keys())#, dna_norm_dict.keys())
+intersecting_patients = set(rna_dict.keys()).intersection(dna_tumor_dict.keys())
 
 # Patient IDs of BRAF patients, IDs have been censored.
 selected_patients = {'xxxxxxxx','xxxxxxxx'}
