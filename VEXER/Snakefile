@@ -39,16 +39,10 @@ def get_scratch_directory(subdirs: List[str], force_workdir_scratch: bool=False)
     return basedir.as_posix()
 
 # find all files matching the pattern
-#RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_RNAlater-RNA_{{RNA_SEQ}}.cram")
 RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
-
-######################################################
-#DNA_TUMOR_WGS = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_RNAlater-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
-#DNA_TUMOR_WES = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_RNAlater-WES_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
 DNA_TUMOR_WGS = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WGS_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
 DNA_TUMOR_WES = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('TRUE_VARIANT_INDIR')}/{{PATIENT_ID}}-{{DNA_T_ID}}-Tumor_Tissue_{{Preservation}}-WES_{{DNA_T_SEQ}}_snv_{{VAR_prefix}}_annot.{{VAR_suffix}}.vcf.gz")
 
-####################################################
 # join WES and WGS data to one variable
 DNA_TUMOR = {
     "PATIENT_ID": DNA_TUMOR_WGS.PATIENT_ID + DNA_TUMOR_WES.PATIENT_ID,
