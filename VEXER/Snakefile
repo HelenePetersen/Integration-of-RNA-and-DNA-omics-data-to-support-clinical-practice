@@ -90,12 +90,6 @@ input_files = lambda wildcards: {
 rule all:
     input:
         expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated.vcf.gz", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_quality.txt", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_RNAsupport.tab.gz", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}-Tumor_Tissue_RNAlater_annotated_RNAsupport.vcf.gz", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID_RNA_FILTER.tab.gz", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab", zip,
-        #expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAlt.txt", zip,
             PATIENT_ID=common_patients)
 
 # Create file where we have both chromosome ID position and alternative base tab seperated for Single nucleotide variants and filter out header -H
@@ -172,7 +166,6 @@ rule get_quality:
 # Count the number of bases and report in format: CHROM POS TOTAL_READS COUNTS COUNTTYPE (3 T 1 A separated by tabs)
 rule count_nucleotide:
     input:
-        #rules.mpileup.output
         rules.get_quality.output.base_support_quality
     output:
         config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_count.txt"
