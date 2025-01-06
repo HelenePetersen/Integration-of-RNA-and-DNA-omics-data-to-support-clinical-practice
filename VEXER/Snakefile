@@ -83,8 +83,6 @@ common_patients = {
 
 input_files = lambda wildcards: {
     "rna_file": f"{config['FASE_FREEZE']}/{config['ALIGN_INDIR']}/{rna_dict[wildcards.PATIENT_ID][0]}-{rna_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{rna_dict[wildcards.PATIENT_ID][2]}-RNA_{rna_dict[wildcards.PATIENT_ID][3]}.cram",
-    #"true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{wildcards.PATIENT_ID}-{dna_tumor_dict[wildcards.PATIENT_ID][0]}-Tumor_Tissue_RNAlater-{dna_tumor_dict[wildcards.PATIENT_ID][1]}_{dna_tumor_dict[wildcards.PATIENT_ID][2]}_snv_somatic_raw.strelka2.vcf.gz",
-    #"annot_true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{wildcards.PATIENT_ID}-{dna_tumor_dict[wildcards.PATIENT_ID][0]}-Tumor_Tissue_RNAlater-{dna_tumor_dict[wildcards.PATIENT_ID][1]}_{dna_tumor_dict[wildcards.PATIENT_ID][2]}_snv_somatic_annot.strelka2.vcf.gz"
     "true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{dna_tumor_dict[wildcards.PATIENT_ID][0]}-{dna_tumor_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{dna_tumor_dict[wildcards.PATIENT_ID][2]}-{dna_tumor_dict[wildcards.PATIENT_ID][3]}_{dna_tumor_dict[wildcards.PATIENT_ID][4]}_snv_{dna_tumor_dict[wildcards.PATIENT_ID][5]}_raw.{dna_tumor_dict[wildcards.PATIENT_ID][6]}.vcf.gz",
     "annot_true_vcf": f"{config['FASE_FREEZE']}/{config['TRUE_VARIANT_INDIR']}/{dna_tumor_dict[wildcards.PATIENT_ID][0]}-{dna_tumor_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{dna_tumor_dict[wildcards.PATIENT_ID][2]}-{dna_tumor_dict[wildcards.PATIENT_ID][3]}_{dna_tumor_dict[wildcards.PATIENT_ID][4]}_snv_{dna_tumor_dict[wildcards.PATIENT_ID][5]}_annot.{dna_tumor_dict[wildcards.PATIENT_ID][6]}.vcf.gz"
 }
@@ -193,7 +191,6 @@ rule count_nucleotide:
         """
 
 # Extracting the mpileup rows that express the alternative base and report the fraction of reads supporting the alternative base.
-# Consider which plots should be created per patient, and which should be created for more.
 rule get_alt_coverage:
     input:
         ALT_ANNOT = rules.join_vcf_geneID.output.ALT_ANNOT,
@@ -204,8 +201,6 @@ rule get_alt_coverage:
         OUTNAME = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support.tab",
         OUTNAME_ID = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_ID.tab",
         GET_SUPPORT = config['SCRIPT_DIR'] + "/get_alt_coverage.sh",
-        #CLINICAl_GENEID = config['SCRIPT_DIR'] + "/fase1_cancer_genes_87.txt",
-        #RPLOT = config['PLOT_DIR'] + "/RNA_support.R",
     shell:
         "module purge; "
         "module load htslib/1.16; "
@@ -213,7 +208,6 @@ rule get_alt_coverage:
         "bash {params.GET_SUPPORT} {input.ALT_ANNOT} {input.COUNTS} {params.OUTNAME}; "
         "paste {params.OUTNAME} <(echo 'PATIENT_ID'; yes '{wildcards.PATIENT_ID}' | head -n $(($(wc -l < {params.OUTNAME})-1))) > {params.OUTNAME_ID}; "
         "bgzip {params.OUTNAME_ID}; "
-        #"Rscript {params.RPLOT} {output.RES_SUPPORT} {params.CLINICAl_GENEID} {config[OUTDIR]}/{wildcards.PATIENT_ID}; "
 
 # Variants are annotated depending on their supporting evidence
 rule annotate_RNA_support:
@@ -305,7 +299,7 @@ rule clean_up_tmp:
         bases_cleaned = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_cleaned.txt",
         base_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_quality.txt",
         base_support_quality = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup_support_quality.txt",
-        #mpileup = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab",
+        mpileup = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_mpileup.tab",
         ALT_ANNOT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAltID.txt",
         GeneID = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosGeneID.txt",
         ALT = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_ChrPosRefAlt.txt",
@@ -315,5 +309,4 @@ rule clean_up_tmp:
         "module load htslib/1.16; "
         "bgzip {params.VCF_OUTNAME}; "
         "rm {params.RES_SUPPORT} {params.COUNTS} {params.bases_cleaned} {params.base_quality} {params.base_support_quality} "
-        "{params.ALT_ANNOT} {params.GeneID} {params.ALT}; "
-        #"{params.mpileup} {params.ALT_ANNOT} {params.GeneID} {params.ALT}; "
+        "{params.mpileup} {params.ALT_ANNOT} {params.GeneID} {params.ALT}; "
