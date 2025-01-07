@@ -1,4 +1,4 @@
-This README file describes the funcionalities of the RNA_DNA_merge pipeline.
+This README file describes the funcionalities of the VEXER pipeline.
 
 # Snakemake
 Edit config file paths to change input and output folders.
