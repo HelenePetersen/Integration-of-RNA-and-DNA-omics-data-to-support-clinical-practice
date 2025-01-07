@@ -113,6 +113,8 @@ Return total variant count distribution per patient-ID using a sinaplot with FIT
 
 ## BRAF patients
 Apply script add_treatment_response.sh to add Best response for BRAF patients with targeted treatment
-and subset the data to only contain the patients from the BRAF study
+and subset the data to only contain the patients from the BRAF study.
+
+Run date_of_sequencing.sh to extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
 
 Apply script BRAF_visualization.R to TBU - xx - TBU
