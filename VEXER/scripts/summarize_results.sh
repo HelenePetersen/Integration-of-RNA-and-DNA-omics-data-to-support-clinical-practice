@@ -81,8 +81,6 @@ bgzip --force $concat_out_diagnosis
 bgzip --force $concat_filt_out_diagnosis
 bgzip --force $concat_min_support
 
-Rscript $SCRIPTDIR/diagnosis_investigation.R $concat_out_diagnosis.gz $INDIR
-
 #####################################################################
 if $TEST_DATASET; then
     # Sinaplot of distribution of variants in FITLER categories
