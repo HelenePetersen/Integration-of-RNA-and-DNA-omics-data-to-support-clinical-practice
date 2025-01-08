@@ -1,0 +1,5 @@
+OUTDIR: "/path/to/output/directory/combined_analysis_all_BRAF"
+FASE_FREEZE: "/path/to/fase1_data_archieve"
+ALIGN_INDIR: "alignments"
+TRUE_VARIANT_INDIR: "variants/snv"
+SCRIPT_DIR: "/path/to/VEXER/scripts"
