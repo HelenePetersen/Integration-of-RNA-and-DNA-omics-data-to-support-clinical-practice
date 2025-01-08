@@ -4,7 +4,8 @@ BRAF_patients="/ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/metadata/BRAF_p
 Fase_data="/ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/metadata/Fase1_groundtruth_2024-10-07.tsv"
 OUT="/ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/metadata/BRAF_sequencing_date.tab"
 
-awk -F'\t' 'NR==FNR {lookup[$2]; next} {
+awk -F'\t' 'BEGIN {print "PATIENT_ID.GLASSNUMBER" "\t" "Seq_date"}
+NR==FNR {lookup[$2]; next} {
     split($8, parts, "-")
     ID=parts[1] "-" parts[2]
     date=match($8, /-RNA_.*-[0-9]{6}_/)}
