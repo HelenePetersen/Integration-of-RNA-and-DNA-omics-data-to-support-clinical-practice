@@ -1,0 +1,7 @@
+OUTDIR: "/path/to/output/directory/snv_VEXER"
+FASE_FREEZE: "/path/to/fase1_data_archieve"
+ALIGN_INDIR: "alignments"
+TRUE_VARIANT_INDIR: "variants/snv"
+SCRIPT_DIR: "/path/to/VEXER/scripts"
+BATCH_DIR: "/path/to/VEXER/file_batches/intersection_patient"
+BATCH_NUMBER: "ai"
