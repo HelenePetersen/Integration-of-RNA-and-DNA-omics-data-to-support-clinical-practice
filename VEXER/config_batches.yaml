@@ -1,4 +1,4 @@
-OUTDIR: "/path/to/output/directory/snv_VEXER"
+OUTDIR: "/path/to/output/directory/results/snv_VEXER"
 FASE_FREEZE: "/path/to/fase1_data_archieve"
 ALIGN_INDIR: "alignments"
 TRUE_VARIANT_INDIR: "variants/snv"
