@@ -45,9 +45,7 @@ done
 
 Cancer_table=$METADATA/"Fase1_groundtruth_2024-10-07.tsv"
 Cancer_diagnosis="/path/to/VEXER/metadata/diagnosis.txt"
-
 concat_out_diagnosis=$OUTDIR/all_patient_RNA_support_diag.tab
-#concat_min_support=$INDIR/all_patient_RNA_min_support_diag.tab
 
 awk -F'\t' '{print $1 "\t" $4}' $Cancer_table | uniq > $Cancer_diagnosis
 
@@ -57,14 +55,11 @@ awk -F'\t' '{print $1 "\t" $4}' $Cancer_table | uniq > $Cancer_diagnosis
 awk -F'\t' 'BEGIN {print "#CHROM" "\t" "POS" "\t" "REF" "\t" "ALT" "\t" "RNA_TOTAL" "\t" "RNA_ALT_COUNT" "\t" "PERCENTAGE" "\t" "QUALITY_SUPPORT_AVG" "\t" "FILTER" "\t" "GENEID" "\t" "PATIENT_ID" "\t" "DIAGNOSIS"}
      NR==FNR { diagnosis[$1] = $2; next } FNR > 1 { split($11, arr, "-"); $12 = diagnosis[arr[1]]; print}' OFS='\t' $Cancer_diagnosis $OUTDIR/$concat_out > $concat_out_diagnosis
      
-# Subset to only contain variants with at least 1 read support to the alternative allele.
-#awk '$6 >= 1' $concat_out_diagnosis > $concat_min_support
-
 bgzip --force $OUTDIR/$concat_out
 bgzip --force $concat_out_diagnosis
 
 #Summarize result and save as RDS object
-Rscript $SCRIPTDIR/overview_diagnosis.R $OUTDIR
+Rscript $SCRIPTDIR/overview_diagnosis.R $concat_out_diagnosis $OUTDIR
 
 # Read in RDS object and save plot and t-test results
 Rscript $SCRIPTDIR/diagnosis_investigation.R $OUTDIR/Percent_overview.RDS $OUTDIR
