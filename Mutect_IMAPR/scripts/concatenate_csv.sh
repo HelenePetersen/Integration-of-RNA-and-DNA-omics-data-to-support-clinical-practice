@@ -1,10 +1,9 @@
 #!/bin/bash
-
-# Output file for concatenated data
-output_file_Mutect="all_patient_Mutect2_concat.stats.csv"
-
 # Get a list of all the CSV files (assuming they are all in the INDIR directory)
 INDIR=/path/to/output/directory/Mutect_IMAPR/BRAF
+
+# Output file for Mutect concatenated data
+output_file_Mutect="all_patient_Mutect2_concat.stats.csv"
 
 csv_files=($INDIR/*/Mutect/*_comparison.stats.csv)
 
@@ -25,7 +24,7 @@ done
 
 echo "All CSV files concatenated into $output_file_Mutect"
 
-# Output file for concatenated data
+# Output file for IMAPR concatenated data
 output_file_IMAPR="all_patient_IMAPR_concat.stats.csv"
 
 csv_files=($INDIR/*/IMAPR/*_comparison.stats.csv)
