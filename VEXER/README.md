@@ -42,7 +42,7 @@ The output contains the following columns; "#CHROM" "POS" "REF" "ALT" "RNA_TOTAL
 **rule annotate_RNA_support**
 
 Apply script annotate_RNA_support.sh to edit the FILTER column according to the supporting evidence of the variant by RNA_TOTAL, RNA_ALT_COUNT and QUALITY_SUPPORT_AVG.
-A file with only the variants passing the filtering requirements are saved (*_mpileup_RNAsupport.tab.gz) and a file with all variants are saved (*_mpileup_support_ID_RNA_FILTER.tab.gz).
+A file with only the variants passing the filtering requirements are saved (\*_mpileup_RNAsupport.tab.gz) and a file with all variants are saved (\*_mpileup_support_ID_RNA_FILTER.tab.gz).
 
 **rule annotate_vcf**
 
