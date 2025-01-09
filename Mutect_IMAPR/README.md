@@ -34,4 +34,4 @@ After the Snakemake pipeline has finished run the command:
 ``` bash
 bash concatenate_csv.sh 
 ```
-Output files from the Snakefile are concatenated and results are summarized in plots created with stats_plotting.R
+Output files from the Snakefile are concatenated and recall are summarized in plots created with stats_plotting.R
