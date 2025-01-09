@@ -3,7 +3,7 @@ This README file describes the funcionalities of the VEXER pipeline, the BRAF an
 # Snakemake
 Edit config file paths to change input and output folders. Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
 ``` bash
-snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
+snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 -k -p
 ```
 ## Description of snakmake rules:
 **rule extract_vcf**
@@ -130,7 +130,7 @@ Then subset the data to only contain the patients from the BRAF study in output 
 Edit config file paths to change input and output folders. Run snakemake pipeline with follwing command. Change value for -j in command to the number of parallel jobs you wish to run.
 
 ``` bash
-snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
+snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 40 -k -p
 ```
 This script is run to ensure all available RNA data is used in the analysis.
 rule mpileup
