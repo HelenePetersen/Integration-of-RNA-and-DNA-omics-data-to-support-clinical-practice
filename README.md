@@ -7,4 +7,4 @@ The aim of Mutect-IMAPR was to quantify the recall of somatic variant calling us
 
 The aim of VEXER was to develop a method for integrating information from the RNA level in variant calling. 
 
-The implementation of the two algorithm are described further in the README files in the respective folders.
+The implementation of the two algorithm are described further in the README files in the respective folders. The data used are not publicly available and outputs from the algorithms are therefore not include in the repositories.
