@@ -1,9 +1,7 @@
 This README file describes the funcionalities of the VEXER pipeline, the BRAF and Cancer type analysis.
 
 # Snakemake
-Edit config file paths to change input and output folders.
-
-Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
+Edit config file paths to change input and output folders. Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
 ``` bash
 snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
 ```
@@ -63,9 +61,9 @@ Run script with command:
 qsub summarize_results.sh
 ```
 input files:
-*_mpileup_support_ID_RNA_FILTER.tab.gz
-*_mpileup_RNAsupport.tab.gz
-Fase1_groundtruth_2024-10-07.tsv
+-   *_mpileup_support_ID_RNA_FILTER.tab.gz
+-   *_mpileup_RNAsupport.tab.gz
+-   Fase1_groundtruth_2024-10-07.tsv
 
 The RNA information is concatenated for all patients in the file: all_patient_RNA_support.tab.gz
 The corresponding file where variants have the filter RNA_PASS are saved in the file: all_patient_RNA_support_filt.tab.gz
@@ -73,8 +71,7 @@ The two files have the cancer diagnosis added and saved as: all_patient_RNA_supp
 The non filtered information are filtered for at least having one read supporting the alternative allele: all_patient_RNA_min_support_diag.tab.gz
 The patient-ID and assigned diagnosis is saved: metadata/diagnosis.txt
 
-If test_data parameter is set to true in summarize_results:
-R scripts are run:
+If test_data parameter is set to true in summarize_results following R scripts are run:
 
 **sina_clin_per_patient.R**
 
@@ -122,15 +119,16 @@ Run script with command:
 bash add_treatment_response.sh
 ```
 input files:
-all_patient_RNA_support_diag.tab.gz
-BRAF_patients.tab
+-   all_patient_RNA_support_diag.tab.gz
+-   BRAF_patients.tab
 
 Adds Best response for BRAF patients with targeted treatment in output file: all_patient_RNA_support_diag_status.tab.
 Then subset the data to only contain the patients from the BRAF study in output file: BRAF_patient_RNA_support_diag_status.tab.
 
 **Snakefile_pileup_RNA**
 
-Run snakemake pipeline with follwing command. Change value for -j in command to the number of parallel jobs you wish to run
+Edit config file paths to change input and output folders. Run snakemake pipeline with follwing command. Change value for -j in command to the number of parallel jobs you wish to run.
+
 ``` bash
 snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
 ```
@@ -174,7 +172,7 @@ return plots showing:
 ## Cancer type analysis
 **Snakefile_read_batches**
 
-Snakemake pipeline is run by qsub by below script with resources; walltime=10.00.00, mem=10GB, nodes=1:ppn=40
+Edit config_batches file paths to change input and output folders. Snakemake pipeline is run by qsub of below script with resources; walltime=10.00.00, mem=10GB, nodes=1:ppn=40
 ``` bash
 module load snakemake/7.25.0
 snakemake -s /ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/production_run/Snakefile_read_batches -j 40 -k -p
