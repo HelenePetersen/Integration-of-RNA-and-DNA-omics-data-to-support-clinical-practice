@@ -57,7 +57,8 @@ Output files from rule get_alt_coverage, annotate_RNA_support and annotate_vcf a
 # Analyze results
 ## Concatenate files
 When the snakemake pipeline has finished, concatenate all the result files using summarize_results.sh.
-**summarize_results.sh**
+
+### summarize_results.sh
 
 Run script with command: qsub summarize_results.sh
 
@@ -72,7 +73,7 @@ The two files have the cancer diagnosis added and saved as: all_patient_RNA_supp
 The non filtered information are filtered for at least having one read supporting the alternative allele: all_patient_RNA_min_support_diag.tab.gz
 The patient-ID and assigned diagnosis is saved: metadata/diagnosis.txt
 
-### If test_data parameter is set to true in summarize_results:
+If test_data parameter is set to true in summarize_results:
 R scripts are run:
 
 **sina_clin_per_patient.R**
