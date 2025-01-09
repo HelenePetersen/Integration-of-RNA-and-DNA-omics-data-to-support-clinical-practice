@@ -3,12 +3,10 @@ This README file describes the funcionalities of the VEXER pipeline, the BRAF an
 # Snakemake
 Edit config file paths to change input and output folders.
 
-Run snakemake pipeline using:
-
-snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 1 --cores 1 -k -p
-
-Change value for -j in command to the number of parallel jobs you wish to run
-
+Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
+``` bash
+snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
+```
 ## Description of snakmake rules:
 **rule extract_vcf**
 
@@ -60,8 +58,10 @@ When the snakemake pipeline has finished, concatenate all the result files using
 
 ### summarize_results.sh
 
-Run script with command: qsub summarize_results.sh
-
+Run script with command:
+``` bash
+qsub summarize_results.sh
+```
 input files:
 *_mpileup_support_ID_RNA_FILTER.tab.gz
 *_mpileup_RNAsupport.tab.gz
@@ -117,7 +117,10 @@ After concatenation of outputs from Snakemake pipeline, run the following script
 
 **add_treatment_response.sh**
 
-Run script with command: bash add_treatment_response.sh
+Run script with command:
+``` bash
+bash add_treatment_response.sh
+```
 input files:
 all_patient_RNA_support_diag.tab.gz
 BRAF_patients.tab
@@ -127,10 +130,10 @@ Then subset the data to only contain the patients from the BRAF study in output 
 
 **Snakefile_pileup_RNA**
 
-Run snakemake pipeline with command:
-snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 1 --cores 1 -k -p
-Change value for -j in command to the number of parallel jobs you wish to run
-
+Run snakemake pipeline with follwing command. Change value for -j in command to the number of parallel jobs you wish to run
+``` bash
+snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
+```
 This script is run to ensure all available RNA data is used in the analysis.
 rule mpileup
 -   Create a pileup file of the RNA tumor for chromosome 7
@@ -140,7 +143,10 @@ rule add_patientID_glassID
 
 **get_RNA_BRAF.sh**
 
-Run script with command: qsub get_RNA_BRAF.sh
+Run script with command:
+``` bash
+qsub get_RNA_BRAF.sh
+```
 Concatenates the output files from Snakefile_pileup_RNA and saves the output for position 1407533
 output file: all_patient_RNA_chr7-1407533.tab
 
@@ -168,13 +174,20 @@ return plots showing:
 ## Cancer type analysis
 **Snakefile_read_batches**
 
-Snakemake pipeline is run using a production user xx TBU
+Snakemake pipeline is run by qsub by below script with resources; walltime=10.00.00, mem=10GB, nodes=1:ppn=40
+``` bash
+module load snakemake/7.25.0
+snakemake -s /ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/production_run/Snakefile_read_batches -j 40 -k -p
+```
 
 **summarize_batches_results.sh**
 
 When the snakemake pipeline has finished, concatenate all the result files, like in summarize_results.sh.
-Run script with command: qsub summarize_batches_results.sh
-After concatenation output file all_patient_RNA_support_diag.tab is saved and used as input file for overview_diagnosis.R:
+Run script with command:
+``` bash
+qsub summarize_batches_results.sh
+```
+After concatenation, output file all_patient_RNA_support_diag.tab is saved and used as input file for overview_diagnosis.R:
 
 overview_diagnosis.R
 -   Create a summarizing per PidGn with total SNV, number of SNV in RNA_PASS and number of SNV in RNA_PASS+RNA_NOPASS. From these meterics the percentage of variants in RNA_PASS and RNA_PASS+RNA_NOPASS is calculated. Data are saved as an RDS object as Percent_overview.RDS.
