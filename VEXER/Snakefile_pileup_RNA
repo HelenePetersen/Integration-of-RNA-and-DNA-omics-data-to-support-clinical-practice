@@ -1,0 +1,56 @@
+## This snakefile extract BRAF variants from RNA files
+
+configfile: "config.yaml"
+import glob
+import re
+import pathlib
+import pandas as pd
+import os
+import numpy
+from typing import List
+from pathlib import Path
+
+# find all files matching the pattern
+#RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_RNAlater-RNA_{{RNA_SEQ}}.cram")
+RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
+
+# Create python dictionaries to organize the wildcards
+rna_dict = {f"{pid}-{rid}": (pid, rid, pres, rseq) for pid, rid, pres, rseq in zip(RNA_TUMOR.PATIENT_ID, RNA_TUMOR.RNA_ID, RNA_TUMOR.Preservation, RNA_TUMOR.RNA_SEQ)}
+
+# Define selected patients, censored
+selected_patients = {'#########','#########'}
+
+# update common patients to only be those having all file types present and be the selected patients.
+common_patients = {
+    patient for patient in set(rna_dict.keys())
+    if patient.split('-')[0] in selected_patients
+}
+
+input_files = lambda wildcards: {
+    "rna_file": f"{config['FASE_FREEZE']}/{config['ALIGN_INDIR']}/{rna_dict[wildcards.PATIENT_ID][0]}-{rna_dict[wildcards.PATIENT_ID][1]}-Tumor_Tissue_{rna_dict[wildcards.PATIENT_ID][2]}-RNA_{rna_dict[wildcards.PATIENT_ID][3]}.cram",
+}
+
+rule all:
+    input:
+        expand(config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_chr7Mpileup_patientID.tab", zip,
+            PATIENT_ID=common_patients)
+
+# Get the nucleotides for positions on chr7
+rule mpileup:
+    input:
+        RNA_ALIGN = lambda wildcards: input_files(wildcards)["rna_file"]
+    output:
+        pileup = config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_chr7Mpileup.tab"
+    shell:
+        "module purge; "
+        "module load samtools/1.19.2; "
+        "samtools mpileup {input.RNA_ALIGN} -r chr7 -o {output.pileup}; "
+        
+# add the patient ID
+rule add_patientID_glassID:
+    input:
+        rules.mpileup.output.pileup,
+    output:
+        config['OUTDIR'] + "/{PATIENT_ID}/{PATIENT_ID}_chr7Mpileup_patientID.tab"
+    shell:
+        "paste {input} <(yes '{wildcards.PATIENT_ID}' | head -n $(($(wc -l < {input})))) > {output}; "
