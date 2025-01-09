@@ -1,4 +1,4 @@
-This README file describes the funcionalities of the VEXER pipeline, the BRAF and Cancer type analysis.
+This README file describes the funcionalities of the VEXER algorithm, the BRAF and Cancer type analysis.
 
 # Snakemake
 Edit config file paths to change input and output folders. Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
