@@ -58,7 +58,6 @@ Output files from rule get_alt_coverage, annotate_RNA_support and annotate_vcf a
 ## Concatenate files
 When the snakemake pipeline has finished, concatenate all the result files using:
 bash summarize_results.sh
-summarize_results runs some R scripts for plotting (diagnosis_investigation.R)
 
 input files:
 *_mpileup_support_ID_RNA_FILTER.tab.gz
@@ -70,7 +69,6 @@ The corresponding file where variants have the filter RNA_PASS are saved in the 
 The two files have the cancer diagnosis added and saved as: all_patient_RNA_support_diag.tab.gz and all_patient_RNA_support_filt_diag.tab.gz.
 The non filtered information are filtered for at least having one read supporting the alternative allele: all_patient_RNA_min_support_diag.tab.gz
 The patient-ID and assigned diagnosis is saved: metadata/diagnosis.txt
-A plot showing TBU - xx - TBU saved as: VariantsPerDiagnosis.pdf
 
 ## If test_data parameter is set to true in summarize_results:
 R scripts are run:
@@ -111,10 +109,19 @@ Return total variant count distribution per patient-ID using a sinaplot with FIT
 -   VariantsPerEvidenceAll.pdf
 -   VariantsPerEvidenceFilt.pdf
 
-## BRAF patients
-Apply script add_treatment_response.sh to add Best response for BRAF patients with targeted treatment
-and subset the data to only contain the patients from the BRAF study.
+## BRAF analysis
+After concatenation of outputs from Snakemake pipeline, run the following scripts
 
-Run date_of_sequencing.sh to extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
+
+**add_treatment_response.sh**
+input files:
+all_patient_RNA_support_diag.tab.gz
+BRAF_patients.tab
+
+Adds Best response for BRAF patients with targeted treatment in output file: all_patient_RNA_support_diag_status.tab.
+Then subset the data to only contain the patients from the BRAF study in output file: BRAF_patient_RNA_support_diag_status.tab.
+
+**date_of_sequencing.sh**
+to extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
 
 Apply script BRAF_visualization.R to TBU - xx - TBU
