@@ -137,7 +137,7 @@ rule mpileup
 -   Create a pileup file of the RNA tumor for chromosome 7
 
 rule add_patientID_glassID
--   Add PATIENT_ID information to the pileup file
+-   Add patient-ID_Glass-number (PidGn) information to the pileup file
 
 **get_RNA_BRAF.sh**
 
@@ -149,7 +149,7 @@ Concatenates the output files from Snakefile_pileup_RNA and saves the output for
 output file: all_patient_RNA_chr7-1407533.tab
 
 In terminal run command: less all_patient_RNA_chr7-1407533.tab | grep 140753336
-Manually convert pileup results to RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and RNA_FILTER. Compare patient-glassnumber in grep with present folders for pileup and registrer patients with RNA_NOCOV.
+Manually convert pileup results to RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and RNA_FILTER. Compare PidGn in grep with present folders for pileup and registrer PidGn with RNA_NOCOV.
 Merge the information output from VEXER and join with BRAF_patients.tab metadata to add Treatment_start. Save file as BRAF_patients_glassnumber.tab with columns: PATIENT_ID, PATIENT_ID.GLASSNUMBER, BEST_RESPONSE, RNA_FILTER, RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and Treatment_start.
 
 Update BRAF_patients_glassnumber.tab with Second_treatment and Date_of_Progression from BRAF_patients.tab metadata.
@@ -188,7 +188,7 @@ qsub summarize_batches_results.sh
 After concatenation, output file all_patient_RNA_support_diag.tab is saved and used as input file for overview_diagnosis.R:
 
 overview_diagnosis.R
--   Create a summarizing per PidGn with total SNV, number of SNV in RNA_PASS and number of SNV in RNA_PASS+RNA_NOPASS. From these meterics the percentage of variants in RNA_PASS and RNA_PASS+RNA_NOPASS is calculated. Data are saved as an RDS object as Percent_overview.RDS.
+-   Create a summarizing table per PidGn with total SNV, number of SNV in RNA_PASS and number of SNV in RNA_PASS+RNA_NOPASS. From these meterics the percentage of variants in RNA_PASS and RNA_PASS+RNA_NOPASS is calculated. Data are saved as an RDS object as Percent_overview.RDS.
 
 diagnosis_investigation.R
 -   Reads in Percent_overview.RDS and create scatter plot showing the number of SNV with RNA expression of alternative variant (RNA_PASS+RNA_NOPASS) versus total SNV.
