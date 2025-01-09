@@ -1,4 +1,4 @@
-This README file describes the funcionalities of the VEXER pipeline.
+This README file describes the funcionalities of the VEXER pipeline, the BRAF and Cancer type analysis.
 
 # Snakemake
 Edit config file paths to change input and output folders.
@@ -56,8 +56,9 @@ Output files from rule get_alt_coverage, annotate_RNA_support and annotate_vcf a
 
 # Analyze results
 ## Concatenate files
-When the snakemake pipeline has finished, concatenate all the result files using:
-bash summarize_results.sh
+When the snakemake pipeline has finished, concatenate all the result files using summarize_results.sh.
+**summarize_results.sh**
+Run script with command: qsub summarize_results.sh
 
 input files:
 *_mpileup_support_ID_RNA_FILTER.tab.gz
@@ -70,7 +71,7 @@ The two files have the cancer diagnosis added and saved as: all_patient_RNA_supp
 The non filtered information are filtered for at least having one read supporting the alternative allele: all_patient_RNA_min_support_diag.tab.gz
 The patient-ID and assigned diagnosis is saved: metadata/diagnosis.txt
 
-## If test_data parameter is set to true in summarize_results:
+### If test_data parameter is set to true in summarize_results:
 R scripts are run:
 
 **sina_clin_per_patient.R**
@@ -112,8 +113,8 @@ Return total variant count distribution per patient-ID using a sinaplot with FIT
 ## BRAF analysis
 After concatenation of outputs from Snakemake pipeline, run the following scripts
 
-
 **add_treatment_response.sh**
+Run script with command: bash add_treatment_response.sh
 input files:
 all_patient_RNA_support_diag.tab.gz
 BRAF_patients.tab
@@ -121,7 +122,57 @@ BRAF_patients.tab
 Adds Best response for BRAF patients with targeted treatment in output file: all_patient_RNA_support_diag_status.tab.
 Then subset the data to only contain the patients from the BRAF study in output file: BRAF_patient_RNA_support_diag_status.tab.
 
-**date_of_sequencing.sh**
-to extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
+**Snakefile_pileup_RNA**
+Run snakemake pipeline with command:
+snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 1 --cores 1 -k -p
+Change value for -j in command to the number of parallel jobs you wish to run
 
-Apply script BRAF_visualization.R to TBU - xx - TBU
+This script is run to ensure all available RNA data is used in the analysis.
+rule mpileup
+-   Create a pileup file of the RNA tumor for chromosome 7
+
+rule add_patientID_glassID
+-   Add PATIENT_ID information to the pileup file
+
+**get_RNA_BRAF.sh**
+Run script with command: qsub get_RNA_BRAF.sh
+Concatenates the output files from Snakefile_pileup_RNA and saves the output for position 1407533
+output file: all_patient_RNA_chr7-1407533.tab
+
+In terminal run command: less all_patient_RNA_chr7-1407533.tab | grep 140753336
+Manually convert pileup results to RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and RNA_FILTER. Compare patient-glassnumber in grep with present folders for pileup and registrer patients with RNA_NOCOV.
+Merge the information output from VEXER and join with BRAF_patients.tab metadata to add Treatment_start. Save file as BRAF_patients_glassnumber.tab with columns: PATIENT_ID, PATIENT_ID.GLASSNUMBER, BEST_RESPONSE, RNA_FILTER, RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and Treatment_start.
+
+Update BRAF_patients_glassnumber.tab with Second_treatment and Date_of_Progression from BRAF_patients.tab metadata.
+
+**date_of_sequencing.sh**
+Run script with command: bash date_of_sequencing.sh
+Extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
+
+**BRAF_visualization**
+Read in BRAF_patients_glassnumber.tab join with metadata from BRAF_sequencing_date.tab.
+
+return plots showing:
+-   RNA_FILTER distribution as bar plot colored by BEST_RESPONSE
+-   RNA_TOTAL vs PATIENT_ID colored by BEST_RESPONSE and split by RNA_FITLER
+-   Sequencing date relative to treatment start vs PATIENT_ID, shape by RNA_FILTER, colored by BEST_RESPONSE split into Pre- and Post-treatment samples. Treatment start and second treatment shown as vertical lines and progression date as a star.
+-   RNA_FILTER distribution of Pre-treatment RNA-Seq samples as bar plot colored by BEST_RESPONSE
+
+## Cancer type analysis
+**Snakefile_read_batches**
+Snakemake pipeline is run using a production user xx TBU
+
+**summarize_batches_results.sh**
+When the snakemake pipeline has finished, concatenate all the result files, like in summarize_results.sh.
+Run script with command: qsub summarize_batches_results.sh
+After concatenation its runs the scripts:
+overview_diagnosis.R
+-   
+diagnosis_investigation.R
+-   
+
+
+
+
+
+
