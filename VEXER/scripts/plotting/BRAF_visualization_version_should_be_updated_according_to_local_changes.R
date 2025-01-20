@@ -86,25 +86,26 @@ df_relative <- df %>%
 
 df_relative$Time_Group <- factor(df_relative$Time_Group, levels = c("Pre-Treatment", "Post-Treatment"))
 
-# pre-treatment and post-treatment facet_wrap
+# pre-treatment and post-treatment showed with transparency
 pre_post_plot <- ggplot(data = df_relative,
        mapping = aes(y = PATIENT_ID, x = Relative_Seq_date, color = BEST_RESPONSE, shape = RNA_FILTER)) +
-  geom_point(size = 4) +
+  geom_point(data = df_relative,
+             aes(alpha = Time_Group, color = BEST_RESPONSE), size = 5) +
+  scale_color_manual(values = c("non evaluable" = "blue", "progression disease" = "red", 
+                                "partial response" = "green", "stable disease" = "yellow")) +
+  scale_alpha_manual(values = c("Pre-Treatment" = 0.5, "Post-Treatment" = 1 ), guide = "none") +
+  scale_shape_manual(values = c("RNA_NOCOV" = 16, "RNA_NOALT" = 17 ,"RNA_NOPASS" = 15, "RNA_PASS" = 18)) +
   geom_point(data = df_relative,
              aes(y = PATIENT_ID, x = 0), color = "black", shape = "|", size = 5) + # Treatment_start now at x = 0
   geom_point(data = df_relative,
              aes(y = PATIENT_ID, x = Relative_Second_treatment), color = "red", shape = "|", size = 5) +
   geom_point(data = df_relative,
              aes(y = PATIENT_ID, x = Relative_Date_of_Progression), color = "red", shape = "*", size = 7) +
-  scale_color_manual(values = c("non evaluable" = "blue", "progression disease" = "red", 
-                                "partial response" = "green", "stable disease" = "yellow")) + # Customize colors
   geom_text_repel(aes(label = str_c(round(PERCENTAGE, 0), "%")), color = "black", direction = "x") +
   scale_x_continuous(breaks = NULL) +
   xlab("Seq date relative to treatment start [days]") +
   theme(axis.text.y = element_blank(), strip.text = element_text(size = 12), axis.title.x = element_text(size = 12),
-        axis.title.y = element_text(size = 12), legend.title = element_text(size = 13), legend.text = element_text(size = 12)) +
-  facet_grid(~ Time_Group, scales = "free_x")
-pre_post_plot
+        axis.title.y = element_text(size = 12), legend.title = element_text(size = 13), legend.text = element_text(size = 12))
 ggsave(paste(PATH,"/geom_scatter_pre_post.png",sep=""), plot = pre_post_plot, width = 34, height = 20, units = "cm")
 
 
