@@ -166,7 +166,7 @@ Read in BRAF_patients_glassnumber.tab join with metadata from BRAF_sequencing_da
 return plots showing:
 -   RNA_FILTER distribution as bar plot colored by BEST_RESPONSE
 -   RNA_TOTAL vs PATIENT_ID colored by BEST_RESPONSE and split by RNA_FITLER
--   Sequencing date relative to treatment start vs PATIENT_ID, shape by RNA_FILTER, colored by BEST_RESPONSE split into Pre- and Post-treatment samples. Treatment start and second treatment shown as vertical lines and progression date as a star.
+-   Sequencing date relative to treatment start vs PATIENT_ID, shape by RNA_FILTER, colored by BEST_RESPONSE and assigned lower opacity to Pre-treatment samples to help distinguish from Post-treatment samples close to the treatment start. Treatment start and second treatment shown as vertical lines and progression date as a star.
 -   RNA_FILTER distribution of Pre-treatment RNA-Seq samples as bar plot colored by BEST_RESPONSE
 
 ## Cancer type analysis
