@@ -56,25 +56,6 @@ RNA_FILTER_wrap <- ggplot(data = df,
         axis.text.x = element_text(size = 10), legend.title = element_text(size = 13), legend.text = element_text(size = 12))
 ggsave(paste(PATH,"/geom_scatter_RNA_FILTER_wrap.png",sep=""), plot = RNA_FILTER_wrap, width = 30, height = 20, units = "cm")
 
-#####################################################################
-
-# Plot patient_ID vs sequence date - without aligning (PUT IN SUPPLEMENTARY ?)
-ggplot(data = df,
-       mapping = aes(y = PATIENT_ID, x = Seq_date, color = BEST_RESPONSE, shape = RNA_FILTER)) +
-  geom_point(size = 4) +
-  geom_point(data = df,
-             aes(y = PATIENT_ID, x = Treatment_start), color = "black", shape = "|", size = 5) +
-  geom_point(data = df,
-             aes(y = PATIENT_ID, x = Second_treatment), color = "red", shape = "|", size = 5) +
-  geom_point(data = df,
-             aes(y = PATIENT_ID, x = Date_of_Progression), color = "red", shape = "*", size = 5) +
-  theme(axis.text.y = element_blank()) +
-  scale_color_manual(values = c("non evaluable" = "blue","progression disease" = "red", "partial response" = "green" , "stable disease" = "yellow")) + # Customize colors
-  geom_text(aes(label = str_c(round(PERCENTAGE,0), "%")), hjust = -0.4, color = "black") +
-  scale_x_date(date_breaks = "1 year",date_labels = "%Y") +
-  labs(title = "Is there a correlation between RNA alternative allele percentage, best response and treatment start (|)? Second treatment shown in red (|), Progression date (*)")
-
-
 #######################################################################################
 # make patient_ID vs sequence data as a relative x-axis
 df_relative <- df %>%
