@@ -1,4 +1,4 @@
-## This snakefile should be submitted using a production user to combines information retrieved from RNAseq data into DNA vcf file
+## This snakefile combines information retrieved from RNA-seq data into RNA and DNA annotated VCF files for phase 1 patients.
 
 configfile: "/path/to/VEXER/config_batches.yaml"
 import glob
