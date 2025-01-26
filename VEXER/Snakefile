@@ -1,4 +1,4 @@
-## This snakefile combines information retrieved from RNAseq data into a DNA and RNA annotated VCF file for BRAF treated patients.
+## This snakefile combines information retrieved from RNAseq data into DNA and RNA annotated VCF files for BRAF treated patients.
 ## Files are saved per PATIENT_ID-RNA_ID (PidGn), to get all file outputs.
 
 configfile: "config.yaml"
