@@ -8,6 +8,7 @@ PATH <- args[2]
 outname <- args[3]
 variant_caller <- args[4]
 
+# Create recall performance plot
 sub <- data.frame(Type = data$type, Recall = data$recall, Precision = data$precision)
 df_Stat <- sub |> pivot_longer(cols=Recall,
                      names_to = "Statistic",
