@@ -8,7 +8,7 @@ module load hap.py/0.3.10
 module load bcftools/1.16
 module load htslib/1.16
 
-# Define variables given as input
+# Define input files from commandline
 TRUE_VCF=$1
 TRUE_VCF_NORM=$2
 TEST=$3
