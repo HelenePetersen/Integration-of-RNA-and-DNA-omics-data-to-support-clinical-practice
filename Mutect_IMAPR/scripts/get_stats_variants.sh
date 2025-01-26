@@ -8,7 +8,7 @@ module load hap.py/0.3.10
 module load bcftools/1.16
 module load htslib/1.16
 
-
+# Define variables given as input
 TRUE_VCF=$1
 TRUE_VCF_NORM=$2
 TEST=$3
@@ -17,6 +17,7 @@ OUT=$5
 OUTDIR=$6
 TEST_NORM=$7
 
+# Run VCF comparison using som.py and bcftools isec
 som.py $TRUE_VCF $TEST --quiet -r $REF -P -N -o $OUT
 bcftools norm -f $REF $TEST -o ${OUT}_$TEST_NORM
 bgzip ${OUT}_$TEST_NORM
