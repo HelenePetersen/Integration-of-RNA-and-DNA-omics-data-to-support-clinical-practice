@@ -1,22 +1,22 @@
-This README file describes the funcionalities of the VEXER algorithm, the BRAF and Cancer type analysis.
+This README file describes the funcionalities of the VEXER pipeline, the BRAF and Cancer type analysis.
 
 # Snakemake
-Edit config file paths to change input and output folders. Run snakemake pipeline following command. Change value for -j in command to the number of parallel jobs you wish to run
+Edit config file paths to change input and output folders. Run snakemake pipeline by following command. Change the value for -j in the command to the number of parallel jobs you wish to run.
 ``` bash
 snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
 ```
-## Description of snakmake rules:
+## Description of snakemake rules:
 **rule extract_vcf**
 
-Read in the true VCF file and extract variant call column informations for SNV.
+Read in the true VCF file and extract variant call column informations for SNVs.
 
 **rule add_geneID**
 
-Read in the annotated true VCF file and find the assigned gene annotation for each variant
+Read in the annotated true VCF file and find the assigned gene annotation for each SNV
 
 **rule join_alt_geneID**
 
-Apply script join_alt_geneID.sh to join the information from the two previous rules, resulting in variant call information and gene annotation for SNV.
+Apply script join_alt_geneID.sh to join the information from the two previous rules.
 
 **rule mpileup**
 
@@ -24,12 +24,12 @@ Create a pileup file of the RNA tumor
 
 **rule get_quality**
 
-Apply script get_support_base.sh to check which variants has RNA reads supporting the alternative allele.
-Apply script quality_score.py to calculate an average phred score per variant for RNA reads supporting the alternative allele and append as column to pileup file. Variants without supporting RNA reads remain blank for this column.
+Apply script get_support_base.sh to check which variants have RNA reads supporting the alternative allele.
+Apply script quality_score.py to calculate an average Phred score per variant for RNA reads supporting the alternative allele and append as column to pileup file. Variants without supporting RNA reads remain blank for this column.
 
 **rule count_nucleotide**
 
-In the pileup file are the column with read bases summarized into a tab separated count format. Letter case is ignored so forward and reverse reads fall into the same group. A read base column is eg. transformed from tTat to 3 T 1 A.
+In the pileup file the column with read bases are summarized into a tab-separated count format. Letter case is ignored so forward and reverse reads fall into the same group. A read base column is eg. transformed from tTat to 3 T 1 A.
 
 **rule get_alt_coverage**
 
@@ -39,12 +39,12 @@ The output contains the following columns; "#CHROM" "POS" "REF" "ALT" "RNA_TOTAL
 
 **rule annotate_RNA_support**
 
-Apply script annotate_RNA_support.sh to edit the FILTER column according to the supporting evidence of the variant by RNA_TOTAL, RNA_ALT_COUNT and QUALITY_SUPPORT_AVG.
+Apply script annotate_RNA_support.sh to edit the FILTER column according to the supporting evidence of the variant by RNA_TOTAL, RNA_ALT_COUNT, and QUALITY_SUPPORT_AVG.
 A file with only the variants passing the filtering requirements are saved (\*_mpileup_RNAsupport.tab.gz) and a file with all variants are saved (\*_mpileup_support_ID_RNA_FILTER.tab.gz).
 
 **rule annotate_vcf**
 
-The true VCF file is updated with annotations from the RNA, this includes RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE, QUALITY_SUPPORT_AVG and FILTER. With these informations added is it possible to access the variants support from RNA data.
+The true VCF file is updated with annotations from the RNA, this includes RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE, QUALITY_SUPPORT_AVG and FILTER. With these informations added is it possible to access each variant's support from RNA data.
 
 **rule clean_up_tmp**
 
@@ -65,13 +65,13 @@ input files:
 -   *_mpileup_RNAsupport.tab.gz
 -   Fase1_groundtruth_2024-10-07.tsv
 
-The RNA information is concatenated for all patients in the file: all_patient_RNA_support.tab.gz
-The corresponding file where variants have the filter RNA_PASS are saved in the file: all_patient_RNA_support_filt.tab.gz
+The RNA information is concatenated for all patients in the file: all_patient_RNA_support.tab.gz.
+The corresponding file where variants have the filter RNA_PASS are saved in the file: all_patient_RNA_support_filt.tab.gz.
 The two files have the cancer diagnosis added and saved as: all_patient_RNA_support_diag.tab.gz and all_patient_RNA_support_filt_diag.tab.gz.
-The non filtered information are filtered for at least having one read supporting the alternative allele: all_patient_RNA_min_support_diag.tab.gz
-The patient-ID and assigned diagnosis is saved: metadata/diagnosis.txt
+The non filtered information are filtered for at least having one read supporting the alternative allele and saved as: all_patient_RNA_min_support_diag.tab.gz.
+The patient-ID and assigned diagnosis is saved in: metadata/diagnosis.txt.
 
-If test_data parameter is set to true in summarize_results following R scripts are run:
+If the TEST_DATASET parameter is set to true in summarize_results following R scripts are run:
 
 **sina_clin_per_patient.R**
 
