@@ -1,4 +1,4 @@
-## This snakefile extract BRAF variants from RNA files
+## This snakefile extract BRAF variants from RNA-seq files
 
 configfile: "config.yaml"
 import glob
@@ -11,7 +11,6 @@ from typing import List
 from pathlib import Path
 
 # find all files matching the pattern
-#RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_RNAlater-RNA_{{RNA_SEQ}}.cram")
 RNA_TUMOR = glob_wildcards(f"{config.get('FASE_FREEZE')}/{config.get('ALIGN_INDIR')}/{{PATIENT_ID}}-{{RNA_ID}}-Tumor_Tissue_{{Preservation}}-RNA_{{RNA_SEQ}}.cram")
 
 # Create python dictionaries to organize the wildcards
