@@ -1,3 +1,4 @@
+# Adapted from https://github.com/wang-lab/IMAPR/blob/main/detect_variants.pl
 use strict;
 use warnings;
 use POSIX;
