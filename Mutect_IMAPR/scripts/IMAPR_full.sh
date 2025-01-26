@@ -1,5 +1,5 @@
 #!/bin/bash
-
+# Adapted from https://github.com/wang-lab/IMAPR/blob/main/IMPAR.sh
 input_file="$1"
 
 if [ -z "$input_file" ]; then
