@@ -1,5 +1,5 @@
-## This snakefile combines information retrieved from RNAseq data into DNA vcf file
-# FOR BRAF treated patients, saving files as PATIENT_ID-RNA_ID (glass number), to get all file outputs.
+## This snakefile combines information retrieved from RNAseq data into a DNA and RNA annotated VCF file for BRAF treated patients.
+## Files are saved per PATIENT_ID-RNA_ID (PidGn), to get all file outputs.
 
 configfile: "config.yaml"
 import glob
