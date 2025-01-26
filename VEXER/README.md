@@ -3,6 +3,7 @@ This README file describes the funcionalities of the VEXER pipeline, the BRAF an
 # Snakemake
 Edit config file paths to change input and output folders. Run snakemake pipeline by following command. Change the value for -j in the command to the number of parallel jobs you wish to run.
 ``` bash
+module load snakemake/7.25.0
 snakemake -s Snakefile --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
 ```
 ## Description of snakemake rules:
@@ -110,7 +111,7 @@ Return total variant count distribution per patient-ID using a sinaplot with FIT
 -   VariantsPerEvidenceFilt.pdf
 
 ## BRAF analysis
-After concatenation of outputs from Snakemake pipeline, run the following scripts
+After concatenation of BRAF data outputs from the Snakemake pipeline, run the following scripts
 
 **add_treatment_response.sh**
 
@@ -122,17 +123,19 @@ input files:
 -   all_patient_RNA_support_diag.tab.gz
 -   BRAF_patients.tab
 
-Adds Best response for BRAF patients with targeted treatment in output file: all_patient_RNA_support_diag_status.tab.
-Then subset the data to only contain the patients from the BRAF study in output file: BRAF_patient_RNA_support_diag_status.tab.
+The script adds Best response for BRAF patients and saves it in the output file: all_patient_RNA_support_diag_status.tab.
+Then subset the data to only contain the patients from the BRAF study in the output file: BRAF_patient_RNA_support_diag_status.tab.
 
 **Snakefile_pileup_RNA**
 
-Edit config file paths to change input and output folders. Run snakemake pipeline with follwing command. Change value for -j in command to the number of parallel jobs you wish to run.
+Edit config file paths to change input and output folders. Run snakemake pipeline with follwing command. Change the value for -j in the command to the number of parallel jobs you wish to run.
 
 ``` bash
+module load snakemake/7.25.0
 snakemake -s Snakefile_pileup_RNA --profile path/to/VEXER/pbs-default -j 40 --cores 1 -k -p
 ```
 This script is run to ensure all available RNA data is used in the analysis.
+
 rule mpileup
 -   Create a pileup file of the RNA tumor for chromosome 7
 
@@ -145,18 +148,23 @@ Run script with command:
 ``` bash
 qsub get_RNA_BRAF.sh
 ```
-Concatenates the output files from Snakefile_pileup_RNA and saves the output for position 1407533
-output file: all_patient_RNA_chr7-1407533.tab
+Concatenates the output files from Snakefile_pileup_RNA and saves the output for position 1407533 in: all_patient_RNA_chr7-1407533.tab.
 
-In terminal run command: less all_patient_RNA_chr7-1407533.tab | grep 140753336
-Manually convert pileup results to RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and RNA_FILTER. Compare PidGn in grep with present folders for pileup and registrer PidGn with RNA_NOCOV.
+In the terminal run:
+``` bash
+less all_patient_RNA_chr7-1407533.tab | grep 140753336
+```
+Afterwards manually convert pileup results to RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and RNA_FILTER. Compare PidGn in terminal output with present folders from pileup generation and registrer PidGn with RNA_NOCOV.
 Merge the information output from VEXER and join with BRAF_patients.tab metadata to add Treatment_start. Save file as BRAF_patients_glassnumber.tab with columns: PATIENT_ID, PATIENT_ID.GLASSNUMBER, BEST_RESPONSE, RNA_FILTER, RNA_TOTAL, RNA_ALT_COUNT, PERCENTAGE and Treatment_start.
 
 Update BRAF_patients_glassnumber.tab with Second_treatment and Date_of_Progression from BRAF_patients.tab metadata.
 
 **date_of_sequencing.sh**
 
-Run script with command: bash date_of_sequencing.sh
+Run script with command:
+``` bash
+bash date_of_sequencing.sh
+```
 Extract information about sequencing date from Fase1_groundtruth_2024-10-07.tsv for each PidGn and save output in metadata folder as BRAF_sequencing_date.tab.
 
 **BRAF_visualization**
@@ -181,6 +189,7 @@ snakemake -s /ngc/projects/gm_ext/hblpet/scripts/RNA_DNA_merge/production_run/Sn
 **summarize_batches_results.sh**
 
 When the snakemake pipeline has finished, concatenate all the result files, like in summarize_results.sh.
+
 Run script with command:
 ``` bash
 qsub summarize_batches_results.sh
@@ -188,11 +197,11 @@ qsub summarize_batches_results.sh
 After concatenation, output file all_patient_RNA_support_diag.tab is saved and used as input file for overview_diagnosis.R:
 
 overview_diagnosis.R
--   Create a summarizing table per PidGn with total SNV, number of SNV in RNA_PASS and number of SNV in RNA_PASS+RNA_NOPASS. From these meterics the percentage of variants in RNA_PASS and RNA_PASS+RNA_NOPASS is calculated. Data are saved as an RDS object as Percent_overview.RDS.
+-   Create a summarizing table per PidGn with total SNV, number of SNVs in RNA_PASS and number of SNVs in RNA_PASS+RNA_NOPASS. From these meterics the percentage of variants in RNA_PASS and RNA_PASS+RNA_NOPASS is calculated. Data are saved as an RDS object as Percent_overview.RDS.
 
 diagnosis_investigation.R
--   Reads in Percent_overview.RDS and create scatter plot showing the number of SNV with RNA expression of alternative variant (RNA_PASS+RNA_NOPASS) versus total SNV.
--   Perform t-test for each cancer type against the remaining to test if there are differences between the cancer types’ tendencies to express their SNV in RNA. Table with results are saved as t_test_diagnosis.txt and significant cancer types are plotted in boxplots to show distribution of RNA SNV expression.
+-   Reads in Percent_overview.RDS and create a scatter plot showing the number of SNV with RNA expression of alternative variant (RNA_PASS+RNA_NOPASS) versus total DNA SNV.
+-   Perform t-test for each cancer type against the remaining, to test if there are differences between the cancer types’ tendencies to express their SNV in RNA. Table with results are saved as t_test_diagnosis.txt and significant cancer types are plotted in boxplots to show distribution of RNA SNV expression.
 
 
 
