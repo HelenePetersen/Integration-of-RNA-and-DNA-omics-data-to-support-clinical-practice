@@ -17,3 +17,4 @@ NR==FNR {lookup[$2]; next} {
         {RNA_date=substr($8, RSTART+1, RLENGTH-2)
         split(RNA_date, comp, "-")
         print ID, comp[2]}}' OFS='\t' $BRAF_patients $Fase_data | uniq > $OUT
+
