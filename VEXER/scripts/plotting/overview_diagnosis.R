@@ -7,6 +7,7 @@ library('scales')
 df <- data.frame(read.delim(args[1], sep = "\t"))
 PATH <- args[2]
 
+# Create RDS object summarizing the total SNVs, number of SNVs in RNA_PASS, and number of SNVs in RNA_PASS+RNA_NOPASS per ID.
 Percentage_calculation <- df %>%
   mutate(
     RNA_FILTER = str_extract(FILTER, "RNA_[\\w]+"),   # Extract the pattern ";RNA_" followed by characters
